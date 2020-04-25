@@ -37,9 +37,9 @@ except:
 # blocking class
 # =============================================================================
 
-class blocking(object):
+class contrack(object):
     """
-    blocking class
+    contrack class
     Author : Daniel Steinfeld, ETH Zurich , 2020
     """
 
@@ -47,7 +47,7 @@ class blocking(object):
     num_of_blocks = 0
 
     def __init__(self, filename="", ds=None, **kwargs):
-        """The constructor for blocking class. Initialize a blocking instance.
+        """The constructor for contrack class. Initialize a contrack instance.
         
         If filename is given, try to load it directly.
         Arguments to the load function can be passed as key=value argument.
@@ -76,7 +76,7 @@ class blocking(object):
             except Exception:
                 raise IOError("Unkown fileformat. Known formats " "are netcdf.")
 
-        blocking.num_of_blocks += 1
+        contrack.num_of_blocks += 1
     
     def __repr__(self):
         try:
@@ -88,7 +88,7 @@ class blocking(object):
         except AttributeError:
             # Assume it's an empty Blocking()
             string = "\
-            Empty blocking container.\n\
+            Empty contrack container.\n\
             Hint: use read() to load data."
         return string
 
@@ -167,7 +167,7 @@ class blocking(object):
             self._ds = xr.open_dataset(filename, **kwargs)
             logger.debug('read: {}'.format(self.__str__))
         else:
-            errmsg = 'blocking() is already set!'
+            errmsg = 'contrack() is already set!'
             raise ValueError(errmsg)
             
     def read_xarray(self, ds):
@@ -186,7 +186,7 @@ class blocking(object):
             self._ds = ds
             logger.debug('read_xarray: {}'.format(self.__str__))
         else:
-            errmsg = 'blocking() is already set!'
+            errmsg = 'contrack() is already set!'
             raise ValueError(errmsg)
  
 # ----------------------------------------------------------------------------
@@ -200,7 +200,7 @@ class blocking(object):
                variable_name=None
     ):
         """
-        Prepares the dataset for blocking detection. Does consistency checks
+        Prepares the dataset for contour tracking. Does consistency checks
         and tests if all required information is available. Sets internal
         variables and dimensions.
 
