@@ -7,7 +7,10 @@ Created on Sun Mar 29 17:12:55 2020
 
 
 TO DO
+    - calculate clim: take precalculated era5 clim
+        - use dask for out of memory problem
     - smooth anomaly field with 2 day running mean
+    . detection: larger OR smaller as threshold
 """
 
 # =======
@@ -16,6 +19,7 @@ TO DO
 # data
 import numpy as np
 import xarray as xr
+from scipy import ndimage
 import datetime
 from numpy.core import datetime64
 
@@ -25,12 +29,19 @@ logger = logging.getLogger(__name__)
 #logger.setLevel(logging.DEBUG)
 logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
 
+# parallel computing
+try:
+    import dask
+except:
+    logger.warning("Dask is not installed in your python environment. Xarray Dataset parallel computing will not work.")
+
+
 # plotting
 try:
     import matplotlib.pyplot as plt
     import cartopy.crs as ccrs
 except:
-    logger.warning("Matplotlib and/or Caropy is not installed in your python environment. Xarray Dataset plotting functions will not work.")
+    logger.warning("Matplotlib and/or Cartopy is not installed in your python environment. Xarray Dataset plotting functions will not work.")
 
 
 # =============================================================================
@@ -470,11 +481,48 @@ class contrack(object):
             else:
                 var_mean = self[variable].mean(dim="time")
         return var_mean
+  
     
+    def calc_clim(self, 
+                  variable, 
+                  window=31
+    ):
+        """
+        Calculate daily (long-term) climatology, smoothed with a rolling average.
+        If one year or less of data: calculate running mean.
+
+        Parameters
+        ----------
+            variable : string
+                Date
+
+        Returns
+        -------
+            array:  float
+                daily (long-term) climatological mean
+
+        """
+        
+        # step 1: long-term daily mean
+        clim = self[variable].groupby('time.dayofyear').mean('time')
+     
+        # step 2: running mean ( with periodic boundary)
+        clim = clim.rolling(dayofyear=window, center=True).mean().fillna(
+            clim[-window:].mean(dim='dayofyear')    
+        )
+        
+        
+        #roll1 = clim.roll(dayofyear=(window*3), roll_coords=True).rolling(dayofyear=window, center=True).mean()
+        #roll2 = clim.rolling(dayofyear=window, center=True).mean()
+        #clim = xr.concat([roll1, roll2], dim='r').mean('r')
+        #del roll1, roll2
+        
+        return clim
+ 
     
     def calc_anom(self, 
-                  variable="",
-                  std_dev=False
+                  variable,
+                  window=31
     ):
         """
         Creates a new variable with name "anom" from variable.
@@ -482,10 +530,10 @@ class contrack(object):
 
         Parameters
         ----------
-            variable : string, optional
-                Input variable. The default is geopotential height.
-            std_dev : bool, optional
-                if True calculate also the standardized anomaly
+            variable : string
+                Input variable.
+            window : int, optional
+                number of timesteps to for climatological running mean
 
         Returns
         -------
@@ -493,84 +541,54 @@ class contrack(object):
                 Anomalie field
 
         """
-        # check if variable exist
-        if variable not in self._ds.variables:
-            logger.warning(
-                "\n'{}' not found.\n"
-                "Available fields: {}".format(
-                variable, ", ".join(self.variables))
-            )
-            return None
         
-        # step 1: load clim
-        self._clim = xr.open_dataset('data/era5_1981_2010_z_clim.nc')
-    
-        if not std_dev:            
-            # step 2: calculate and create new variable anomaly     
-            self._ds['anom'] = xr.Variable(
-                self._ds.variables[variable].dims,
-                self._ds[variable].groupby('time.dayofyear') - self._clim['z_mean'],
-                attrs={
-                    'units': self._ds[variable].attrs['units'],
-                    'long_name': self._ds[variable].attrs['long_name'] + ' Anomaly',
-                    'standard_name': self._ds[variable].attrs['long_name'] + ' anomaly',
-                    'history': 'Calculated from {}.'.format(variable)}
-            )
-            logger.info('Calculating Anomaly... DONE')
-        
-        if std_dev:
-            # step 2: calculate and create new variable standardized anomaly      
-            self._ds['std_anom'] = xr.Variable(
-                self._ds.variables[variable].dims,
-                xr.apply_ufunc(
-                    lambda x, m, s: (x - m) / s,
-                    self._ds[variable].groupby('time.dayofyear'),
-                    self._clim['z_mean'],
-                    self._clim['z_std'],
-                ),
-                attrs={
-                    'units': '', # standarized variable without unit
-                    'long_name': self._ds[variable].attrs['long_name'] + ' Standardized Anomaly',
-                    'standard_name': self._ds[variable].attrs['long_name'] + ' standardized anomaly',
-                    'history': 'Calculated from {}.'.format(variable)}
-            )
-            logger.info('Calculating Standardized Anomaly... DONE')
+        # step 1: calculate clim
+        clim = self.calc_clim(variable=variable, window=window)  
+               
+        # step 2: calculate and create new variable anomaly     
+        self._ds['anom'] = xr.Variable(
+            self._ds[variable].dims,
+            self._ds[variable].groupby('time.dayofyear') - clim,
+            attrs={
+                'units': self._ds[variable].attrs['units'],
+                'long_name': self._ds[variable].attrs['long_name'] + ' Anomaly',
+                'standard_name': self._ds[variable].attrs['long_name'] + ' anomaly',
+                'history': 'Calculated from {}.'.format(variable)}
+        )
+        logger.info('Calculating Anomaly... DONE')
             
             
-    def detection(self,
+    def run_contrack(self,
                   variable="anom",
-                  threshold=1.5,
-                  ge_or_le="ge"
+                  threshold=150,
+                  overlap=50,
+                  persistence=5
                   
     ):
         """
         Define closed contours by a threshold value
-        ge = greater equal
-        le = less equal
+
         """
     
-        logger.info('Detecting Anomalies')
+        logger.info(
+            "\nRun ConTrack \n"
+            "########### \n"
+            "    threshold:    {}\n"
+            "    overlap:      {} %\n"
+            "    persistency:  {} days".format(
+                threshold, overlap, persistence)
+        )
         
-        # step 1: check if internal variables/dimensions are set
-        if variable not in self._ds.variables:
-            logger.warning(
-                "\n'{}' not found.\n"
-                "Available fields: {}.\n"
-                "Hint: Run calc_anom() first.".format(
-                variable, ", ".join(self.variables))
+        
+        
+          logger.warning(
+                "\nBe careful with the dimensions, "
+                "you want dims = 3 and shape:\n"
+                "(latitude, longitude, time)"
             )
-            return None
         
-        # step 2: find contours by threshold
-        def _apply_threshold(field, th, cond):
-            if cond == "ge":
-                return np.where(field >= th, 1, 0)
-            if cond == "le":
-                return np.where(field <= th, 1, 0)
-         
-        test = _apply_threshold(self._ds[variable].data, threshold, ge_or_le)
-        
-        # step 2: identify individual contours (2D)
+        # step 1: identify individual contours (2D)
+        flag = xr.where(self._ds['anom'] >= threshold, 1, 0)
         
         # step 3: 
         

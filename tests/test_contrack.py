@@ -9,11 +9,13 @@ Created on Sun Apr  5 13:51:22 2020
 
 # =======
 # import packages
+import sys
+sys.path.append('../src/contrack')
 
-# 
-from blocking_class import blocking
+# import contrack
+from contrack import contrack
 
-# data
+# data analysis
 import numpy as np
 import xarray as xr
 import datetime
@@ -22,6 +24,10 @@ from numpy.core import datetime64
 # logs
 import logging
 
+# parallel computing
+import dask
+from dask.diagnostics import ProgressBar
+import time
 
 # plotting
 try:
@@ -35,9 +41,12 @@ except:
 # read data
 
 # era
-ds_era = xr.open_dataset('data/era5_2019_z_t_500.nc')
-ds_era = xr.open_dataset('data/era5_1981-2010_z_500.nc')
+ds_era = xr.open_dataset('../data/era5_2019_z_t_500.nc')
+ds_era = xr.open_dataset('../data/era5_1981-2010_z_500.nc')
+ds_era = xr.open_dataset('../data/era5_1981-2010_z_500.nc', chunks={'longitude': 1})
 ds_era_1 =  xr.open_dataset('~/Downloads/35878605-0b92-49dc-aa63-3073c8511c45.nc')
+
+print('ds size in GB {:0.2f}\n'.format(ds_era.nbytes / 1e9))
 
 list(ds_era.variables)
 list(ds_era.data_vars)
@@ -51,12 +60,42 @@ ax.set_global(); ax.coastlines();
 
 #%%
 # =======
+# dask
+if ds_era['z'].chunks:
+    ds_era['z'] = ds_era['z'].chunk({'longitude': -1})
+
+# Step 1: remove leap day
+ds_era = ds_era.sel(time=~((ds_era.time.dt.month == 2) & (ds_era.time.dt.day == 29)))
+
+ds_era = ds_era.chunk({'time': 365, 'longitude': 30})
+
+with ProgressBar():
+    ds_era = ds_era.groupby('time.dayofyear').mean('time')
+
+ds_era = ds_era.chunk({'dayofyear': None, 'longitude': 30})
+
+# step 4: 31-day running mean
+roll1 = ds_era.roll(dayofyear=150).rolling(dayofyear=31, center=True).mean()
+roll2 = ds_era.rolling(dayofyear=31, center=True).mean()
+sol2 = xr.concat([roll1, roll2], dim='r').mean('r')
+
+
+with ProgressBar():
+    results = sol2.compute()    
+    #ds_era.rolling(dayofyear=31).construct('window').mean('window')
+    
+
+sol2['z'].sel(longitude=10, latitude=48).plot()
+
+#%%
+# =======
 # create daily long-term climatology
 
 # Step 1: remove leap day
-#ds_era = ds_era.sel(time=~((ds_era.time.dt.month == 2) & (ds_era.time.dt.day == 29)))
+ds_era = ds_era.sel(time=~((ds_era.time.dt.month == 2) & (ds_era.time.dt.day == 29)))
 
 # Step 2: daily mean
+
 ds_era = ds_era.resample(time='1D').mean()
 
 # Step 4: calc geopotential height
@@ -64,7 +103,8 @@ g = 9.80665
 ds_era['z'] = ds_era['z'] / g
 
 # Step 3: daily long-term climatology over period 
-ds_era['z_mean'] = ds_era.z.groupby('time.dayofyear').mean('time')
+
+ds_era['z_mean'] = ds_era.groupby('time.dayofyear').mean('time')
 ds_era['z_std'] = ds_era.z.groupby('time.dayofyear').std('time')
 
 # drop z
@@ -74,6 +114,12 @@ ds_era = ds_era.drop_vars(['z','time'])
 roll1 = ds_era.roll(dayofyear=150).rolling(dayofyear=31, center=True).mean()
 roll2 = ds_era.rolling(dayofyear=31, center=True).mean()
 sol2 = xr.concat([roll1, roll2], dim='r').mean('r')
+
+
+
+
+
+
 
 # rename variable
 #sol2 = sol2.rename({'z': 'z_clim'})
@@ -92,6 +138,7 @@ sol2 = xr.open_dataset('data/era5_1981_2010_z_clim.nc')
 # plot test
 sol2['z_mean'].sel(longitude=10, latitude=48).plot()
 ds_era['z'].sel(longitude=10, latitude=48).plot()
+clim.sel(longitude=10, latitude=48).plot()
 
 
 
@@ -418,22 +465,32 @@ ax.set_global(); ax.coastlines();
 # blocking class testing
 # =============================================================================
 
+from contrack import contrack
+
 # initiate blocking instance
-block = blocking()
+block = contrack()
 # read ERA5
-block.read('data/era5_2019_z_t_500.nc')
+block.read('../data/era5_2019_z_t_500.nc')
 
 # calculate geopotential height
 block.calculate_gph_from_gp()
 
+# calculate clim
+clim = block.calc_clim('z')
+
 # calculate z500 anomaly
-block.calc_anom(std_dev=True)
+block.calc_anom('z_height', window=31)
 
 # plot z500 anomaly on 2 Sep 2019 (Hurricane Dorian)
 ax = plt.axes(projection=ccrs.PlateCarree())
-block['std_anom'].sel(time='2019-09-2').plot(ax=ax, transform=ccrs.PlateCarree())
-#ds_era['test'].sel(time='2019-09-2')[0].plot.contour(ax=ax, transform=ccrs.PlateCarree(), levels=[-1.5], colors='green')
+block['anom'].sel(time='2019-09-2').plot(ax=ax, transform=ccrs.PlateCarree())
 ax.set_extent([-90, -60, 20, 50], crs=ccrs.PlateCarree())
+ax.coastlines()
+
+# plot z500 anomaly on 29 Jan 2019 (US Cold Spell)
+ax = plt.axes(projection=ccrs.PlateCarree())
+block['anom'].sel(time='2019-01-29').plot(ax=ax, transform=ccrs.PlateCarree())
+ax.set_extent([-180, -60, 20, 90], crs=ccrs.PlateCarree())
 ax.coastlines()
 
 
