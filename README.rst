@@ -4,13 +4,13 @@
 ConTrack - Contour Tracking: A Package to track circulation anomalies.
 ###############################################
 
-Based on the atmospheric blocking index by Schwierz et al. [2006].
-See also:
+Based on the atmospheric blocking index by Schwierz et al. (2006).  
+See also:  
 - Croci-Maspoli et al. (2007)
 - Pfahl et al. (2015)
 - Steinfeld and Pfahl (2019)
 
-The PV-Anomaly blocking climatology used in Steinfeld and Pfahl (2019) is publicly available via an ETH Zurich-based web server [http://eraiclim.ethz.ch/, see Sprenger et al. (2017)].
+The PV-Anomaly blocking climatology used in Steinfeld and Pfahl (2019) is publicly available via an ETH Zurich-based web server [http://eraiclim.ethz.ch/, see Sprenger et al. (2017)].  
 
 ==========
 Current Status: In early development!!!!!
