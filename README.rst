@@ -5,7 +5,9 @@ ConTrack - Contour Tracking: A Package to track circulation anomalies.
 ###############################################
 
 Based on the atmospheric blocking index by Schwierz et al. (2006).  
+
 See also:  
+
 - Croci-Maspoli et al. (2007)
 - Pfahl et al. (2015)
 - Steinfeld and Pfahl (2019)
