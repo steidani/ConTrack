@@ -580,13 +580,6 @@ class contrack(object):
         )
         
         
-        
-          logger.warning(
-                "\nBe careful with the dimensions, "
-                "you want dims = 3 and shape:\n"
-                "(latitude, longitude, time)"
-            )
-        
         # step 1: identify individual contours (2D)
         flag = xr.where(self._ds['anom'] >= threshold, 1, 0)
         

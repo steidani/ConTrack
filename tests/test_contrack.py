@@ -479,19 +479,21 @@ block.calculate_gph_from_gp()
 clim = block.calc_clim('z')
 
 # calculate z500 anomaly
-block.calc_anom('z_height', window=31)
+block.calc_anom('z_height', window=61)
 
 # plot z500 anomaly on 2 Sep 2019 (Hurricane Dorian)
 ax = plt.axes(projection=ccrs.PlateCarree())
-block['anom'].sel(time='2019-09-2').plot(ax=ax, transform=ccrs.PlateCarree())
+block['anom'].sel(time='2019-09-5').plot(ax=ax, transform=ccrs.PlateCarree())
 ax.set_extent([-90, -60, 20, 50], crs=ccrs.PlateCarree())
 ax.coastlines()
 
 # plot z500 anomaly on 29 Jan 2019 (US Cold Spell)
-ax = plt.axes(projection=ccrs.PlateCarree())
-block['anom'].sel(time='2019-01-29').plot(ax=ax, transform=ccrs.PlateCarree())
-ax.set_extent([-180, -60, 20, 90], crs=ccrs.PlateCarree())
-ax.coastlines()
+for ii in range(20,35):
+    ax = plt.axes(projection=ccrs.PlateCarree())
+    block['anom'].isel(time=ii).plot(ax=ax, transform=ccrs.PlateCarree())
+    ax.set_extent([-180, -60, 20, 90], crs=ccrs.PlateCarree())
+    ax.coastlines()
+    plt.show()
 
 
 block.read_xarray(a)
