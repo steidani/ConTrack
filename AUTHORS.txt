@@ -1,0 +1,10 @@
+Main Authors
+============
+
+Daniel Steinfeld <daniel.steinfeld@alumni.ethz.ch>
+
+Code Contributors
+=================
+
+...
+
