@@ -506,11 +506,12 @@ class contrack(object):
         # step 1: long-term daily mean
         clim = self[variable].groupby('time.dayofyear').mean('time')
      
+        clim = clim.chunk({'dayofyear': None})
         # step 2: running mean ( with periodic boundary)
         clim = clim.rolling(dayofyear=window, center=True).mean().fillna(
             clim[-window:].mean(dim='dayofyear')    
         )
-        
+
         
         #roll1 = clim.roll(dayofyear=(window*3), roll_coords=True).rolling(dayofyear=window, center=True).mean()
         #roll2 = clim.rolling(dayofyear=window, center=True).mean()
@@ -561,7 +562,7 @@ class contrack(object):
     def run_contrack(self,
                   variable="anom",
                   threshold=150,
-                  overlap=50,
+                  overlap=0.5,
                   persistence=5
                   
     ):
@@ -580,12 +581,95 @@ class contrack(object):
         )
         
         
-        # step 1: identify individual contours (2D)
+        # step 1: find contours (circulation anomalies)
         flag = xr.where(self._ds['anom'] >= threshold, 1, 0)
         
-        # step 3: 
+        # step 2: identify individual contours
+        flag, num_features = ndimage.label(flag.data, structure= np.array([[[0, 0, 0], [0,0,0], [0,0,0]],
+                                                                          [[1, 1, 1], [1,1,1], [1,1,1]],
+                                                                          [[0, 0, 0], [0,0,0], [0,0,0]]])
+                                          )
+        # periodic boundry: allow contours to cross date border
+        for tt in range(flag.shape[0]):
+            for y in range(flag.shape[1]):
+                if flag[tt, y, 0] > 0 and flag[tt, y, -1] > 0:
+                    flag[tt][flag[tt] == flag[tt, y, -1]] = flag[tt, y, 0]
+                    
+                    
+        #step 3: overlapping
+        var = self._ds['time'].to_index()
+        dime = np.unique((var[1:] - var[:-1]).astype('timedelta64[D]'))
+        var = self._ds['latitude'].data
+        dlat = abs(np.unique((var[1:] - var[:-1])))
+        var = self._ds['longitude'].data
+        dlon = np.unique((var[1:] - var[:-1]))
+       
+        weight_lat = np.cos(self._ds['latitude'].data*np.pi/180)
+        weight_grid = np.ones((181, 360)) * np.array((111 * dlat * 111 * dlon * weight_lat)).astype(np.float32)[:, None]
+
+        for tt in range(1,flag.shape[0]-1): 
+            # loop over individual contours
+            slices = ndimage.find_objects(flag[tt])
+            label = 0
+            for slice_ in slices:
+                label = label+1
+                if slice_ is None:
+                    #no feature with this flag
+                    continue
+                areacon = np.sum(weight_grid[slice_][flag[tt][slice_] == label])
+                areaover_forward = np.sum(weight_grid[slice_][(flag[tt][slice_] == label) & (flag[tt+1][slice_] >= 1)])
+                areaover_backward = np.sum(weight_grid[slice_][(flag[tt][slice_] == label) & (flag[tt-1][slice_] >= 1)])
         
+                fraction_backward = (1 / areacon) * areaover_backward
+                fraction_forward = (1 / areacon) * areaover_forward 
+             
+                # middle
+                #if fraction_backward != 0 and fraction_forward != 0:
+                #    if (fraction_backward < overlap) or (fraction_forward < overlap):
+                #        flag[tt][slice_][(flag[tt][slice_] == label)] = 0.
+                # decay
+                #if fraction_backward != 0 and fraction_forward == 0:
+                #    if (fraction_backward < overlap):
+                #        flag[tt][slice_][(flag[tt][slice_] == label)] = 0.
+                # onset
+                #if fraction_backward == 0 and fraction_forward != 0:        
+                if (fraction_forward < overlap):
+                    flag[tt][slice_][(flag[tt][slice_] == label)] = 0.
+                        
+        # step 4: persistency
+        # find features along time axis
+        flag, num_features = ndimage.label(flag, structure = np.array([[[0, 0, 0], [0,1,0], [0,0,0]],
+                                                                      [[1, 1, 1], [1,1,1], [1,1,1]],
+                                                                      [[0, 0, 0], [0,1,0], [0,0,0]]]))
+        # periodic boundry: allow features to cross date border
+        for tt in range(flag.shape[0]):
+            for y in range(flag.shape[1]):
+                if flag[tt, y, 0] > 0 and flag[tt, y, -1] > 0:
+                    flag[tt][flag[tt] == flag[tt, y, -1]] = flag[tt, y, 0]
         
+        label = 0
+        for slice_ in ndimage.find_objects(flag):
+            label = label+1
+            if slice_ is None:
+                #no feature with this flag
+                continue
+            if (slice_[0].stop - slice_[0].start) < persistence:
+                flag[slice_][(flag[slice_] == label)] = 0.        
+        
+        num_features = len(np.unique(flag))        
+        # create new variable flag
+        self._ds['flag'] = xr.Variable(
+            self._ds[variable].dims,
+            flag,
+            attrs={
+                'units': self._ds[variable].attrs['units'],
+                'long_name': self._ds[variable].attrs['long_name'] + ' Anomaly',
+                'standard_name': self._ds[variable].attrs['long_name'] + ' anomaly',
+                'history': 'Calculated from {}.'.format(variable)}
+        )
+        logger.info("Calculating Blocking.. DONE\n"
+                    "{} blocks tracked".format(num_features)
+                    )
     
    
 

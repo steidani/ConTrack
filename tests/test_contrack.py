@@ -9,8 +9,8 @@ Created on Sun Apr  5 13:51:22 2020
 
 # =======
 # import packages
-import sys
-sys.path.append('../src/contrack')
+#import sys
+#sys.path.append('../src/contrack')
 
 # import contrack
 from contrack import contrack
@@ -41,7 +41,7 @@ except:
 # read data
 
 # era
-ds_era = xr.open_dataset('../data/era5_2019_z_t_500.nc')
+ds_era = xr.open_dataset('data/era5_2019_z_t_500.nc')
 ds_era = xr.open_dataset('../data/era5_1981-2010_z_500.nc')
 ds_era = xr.open_dataset('../data/era5_1981-2010_z_500.nc', chunks={'longitude': 1})
 ds_era_1 =  xr.open_dataset('~/Downloads/35878605-0b92-49dc-aa63-3073c8511c45.nc')
@@ -245,6 +245,8 @@ ds_era['anom'] = block['anom'].rolling(time=2, center=True).mean().fillna(
             block['anom'][-2:].mean(dim='time')    
             )
 
+ds_era['anom'] = block['anom']
+
 ax = plt.axes(projection=ccrs.PlateCarree())
 ds_era['anom'].std(dim='time').plot(levels=np.arange(100, 160,10))
 ax.set_global(); ax.coastlines();
@@ -295,7 +297,7 @@ arr = np.asarray(arr).squeeze()
 
 # do it over all timesteps
 # structure = np.ones((3,) * 3) # diagonal along all axis
-structure = np.array([[[0, 0, 0], [0,1,0], [0,0,0]],[[1, 1, 1], [1,1,1], [1,1,1]],[[0, 0, 0], [0,1,0], [0,0,0]]]) # overlap along time axis, diagonal along lat lon
+structure = np.array([[[0, 0, 0], [0,0,0], [0,0,0]],[[1, 1, 1], [1,1,1], [1,1,1]],[[0, 0, 0], [0,0,0], [0,0,0]]]) # overlap along time axis, diagonal along lat lon
 arr, num_features = ndimage.label(ds_era['test'].data, structure=structure)
 # periodic boundry: allow features to cross date border
 for tt in range(arr.shape[0]):
@@ -306,7 +308,7 @@ for tt in range(arr.shape[0]):
 
 len(np.unique(arr))
 for tt in range(0,11):
-    plt.contourf(arr[tt], cmap='jet'), plt.colorbar()
+    plt.contourf(arr[tt], cmap='jet', levels=np.arange(1,30,1)), plt.colorbar()
     plt.show()
 
 # remove values below 20°
@@ -357,7 +359,7 @@ weight_grid = np.ones((181, 360)) * np.array((111 * dlat * 111 * dlon * weight_l
 
 start_time = time.time()
 for tt in range(1,arr.shape[0]-1):
-    print(tt)   
+    #print(tt)   
     # loop over individual contours
     slices = ndimage.find_objects(arr[tt])
     label = 0
@@ -377,17 +379,17 @@ for tt in range(1,arr.shape[0]-1):
         #    arr[tt][slice_][(arr[tt][slice_] == label)] = 0.
      
         # middle
-        if fraction_backward != 0 and fraction_forward != 0:
-            if (fraction_backward < overlap) or (fraction_forward < overlap):
-                arr[tt][slice_][(arr[tt][slice_] == label)] = 0.
+        #if fraction_backward != 0 and fraction_forward != 0:
+        #    if (fraction_backward < overlap) or (fraction_forward < overlap):
+        #        arr[tt][slice_][(arr[tt][slice_] == label)] = 0.
         # decay
-        if fraction_backward != 0 and fraction_forward == 0:
-            if (fraction_backward < overlap):
-                arr[tt][slice_][(arr[tt][slice_] == label)] = 0.
+        #if fraction_backward != 0 and fraction_forward == 0:
+        #    if (fraction_backward < overlap):
+        #        arr[tt][slice_][(arr[tt][slice_] == label)] = 0.
         # onset
-        if fraction_backward == 0 and fraction_forward != 0:        
-            if (fraction_forward < overlap):
-                arr[tt][slice_][(arr[tt][slice_] == label)] = 0.
+        #if fraction_backward == 0 and fraction_forward != 0:        
+        if (fraction_forward < overlap):
+            arr[tt][slice_][(arr[tt][slice_] == label)] = 0.
         
         
         #elif (fraction_forward < overlap):
@@ -470,16 +472,35 @@ from contrack import contrack
 # initiate blocking instance
 block = contrack()
 # read ERA5
-block.read('../data/era5_2019_z_t_500.nc')
+block.read('data/era5_1981-2010_z_500.nc')
+# block.read('data/anom_1981_2010.nc')
+
+# clean data
+# Step 1: remove leap day
+block._ds = block._ds.sel(time=~((block._ds.time.dt.month == 2) & (block._ds.time.dt.day == 29)))
+block._ds = block._ds.chunk({'time': 365, 'longitude': 60})
 
 # calculate geopotential height
 block.calculate_gph_from_gp()
 
+block.z_height.chunks
+block._ds = block._ds.chunk({'time': None})
+
+# block._ds = block._ds.drop_vars('z_height')
+
 # calculate clim
-clim = block.calc_clim('z')
+#clim = block.calc_clim('z')
+
 
 # calculate z500 anomaly
-block.calc_anom('z_height', window=61)
+block.calc_anom('z_height', window=31)
+# block._ds.to_netcdf('data/anom_1981_2010.nc')
+
+# calculate blocking
+block.run_contrack('anom', 
+                  threshold=150,
+                  overlap=0.5,
+                  persistence=5)
 
 # plot z500 anomaly on 2 Sep 2019 (Hurricane Dorian)
 ax = plt.axes(projection=ccrs.PlateCarree())
@@ -491,9 +512,14 @@ ax.coastlines()
 for ii in range(20,35):
     ax = plt.axes(projection=ccrs.PlateCarree())
     block['anom'].isel(time=ii).plot(ax=ax, transform=ccrs.PlateCarree())
-    ax.set_extent([-180, -60, 20, 90], crs=ccrs.PlateCarree())
+    block['flag'].isel(time=ii).plot.contour(ax=ax, colors='magenta',transform=ccrs.PlateCarree())
     ax.coastlines()
     plt.show()
+    
+# plot frequency
+ax = plt.axes(projection=ccrs.PlateCarree())
+(xr.where(block['flag']>1,1,0).sum(dim='time')/block.ntime).plot()
+ax.set_global(); ax.coastlines();
 
 
 block.read_xarray(a)
