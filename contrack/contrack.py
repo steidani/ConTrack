@@ -582,6 +582,7 @@ class contrack(object):
         
         
         # step 1: find contours (circulation anomalies)
+        logger.info("Find individual contours...")
         flag = xr.where(self._ds['anom'] >= threshold, 1, 0)
         
         # step 2: identify individual contours
@@ -594,9 +595,10 @@ class contrack(object):
             for y in range(flag.shape[1]):
                 if flag[tt, y, 0] > 0 and flag[tt, y, -1] > 0:
                     flag[tt][flag[tt] == flag[tt, y, -1]] = flag[tt, y, 0]
-                    
+                          
                     
         #step 3: overlapping
+        logger.info("Check for overlap...")
         var = self._ds['time'].to_index()
         dime = np.unique((var[1:] - var[:-1]).astype('timedelta64[D]'))
         var = self._ds['latitude'].data
@@ -624,20 +626,21 @@ class contrack(object):
                 fraction_forward = (1 / areacon) * areaover_forward 
              
                 # middle
-                #if fraction_backward != 0 and fraction_forward != 0:
-                #    if (fraction_backward < overlap) or (fraction_forward < overlap):
-                #        flag[tt][slice_][(flag[tt][slice_] == label)] = 0.
+                if fraction_backward != 0 and fraction_forward != 0:
+                    if (fraction_backward < overlap) or (fraction_forward < overlap):
+                        flag[tt][slice_][(flag[tt][slice_] == label)] = 0.
                 # decay
-                #if fraction_backward != 0 and fraction_forward == 0:
-                #    if (fraction_backward < overlap):
-                #        flag[tt][slice_][(flag[tt][slice_] == label)] = 0.
+                if fraction_backward != 0 and fraction_forward == 0:
+                    if (fraction_backward < overlap):
+                        flag[tt][slice_][(flag[tt][slice_] == label)] = 0.
                 # onset
-                #if fraction_backward == 0 and fraction_forward != 0:        
-                if (fraction_forward < overlap):
-                    flag[tt][slice_][(flag[tt][slice_] == label)] = 0.
+                if fraction_backward == 0 and fraction_forward != 0:        
+                    if (fraction_forward < overlap):
+                        flag[tt][slice_][(flag[tt][slice_] == label)] = 0.
                         
         # step 4: persistency
         # find features along time axis
+        logger.info("Check for persistency...")
         flag, num_features = ndimage.label(flag, structure = np.array([[[0, 0, 0], [0,1,0], [0,0,0]],
                                                                       [[1, 1, 1], [1,1,1], [1,1,1]],
                                                                       [[0, 0, 0], [0,1,0], [0,0,0]]]))

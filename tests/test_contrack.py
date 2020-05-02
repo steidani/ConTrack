@@ -475,10 +475,16 @@ block = contrack()
 block.read('data/era5_1981-2010_z_500.nc')
 # block.read('data/anom_1981_2010.nc')
 
+
+
+
 # clean data
 # Step 1: remove leap day
 block._ds = block._ds.sel(time=~((block._ds.time.dt.month == 2) & (block._ds.time.dt.day == 29)))
-block._ds = block._ds.chunk({'time': 365, 'longitude': 60})
+
+block._ds = block._ds.sel(time=block._ds.time.dt.month.isin([1, 2, 12]))
+
+block._ds = block._ds.chunk({'time': 365, 'longitude': 10})
 
 # calculate geopotential height
 block.calculate_gph_from_gp()
@@ -505,21 +511,28 @@ block.run_contrack('anom',
 # plot z500 anomaly on 2 Sep 2019 (Hurricane Dorian)
 ax = plt.axes(projection=ccrs.PlateCarree())
 block['anom'].sel(time='2019-09-5').plot(ax=ax, transform=ccrs.PlateCarree())
-ax.set_extent([-90, -60, 20, 50], crs=ccrs.PlateCarree())
+ax.set_extent([-120, -60, 30, 90], crs=ccrs.PlateCarree())
 ax.coastlines()
 
 # plot z500 anomaly on 29 Jan 2019 (US Cold Spell)
-for ii in range(20,35):
+start_date = datetime.date(2009, 12, 1)
+end_date = datetime.date(2010, 1, 1)
+
+ii = start_date
+while ii <= end_date:
     ax = plt.axes(projection=ccrs.PlateCarree())
-    block['anom'].isel(time=ii).plot(ax=ax, transform=ccrs.PlateCarree())
-    block['flag'].isel(time=ii).plot.contour(ax=ax, colors='magenta',transform=ccrs.PlateCarree())
+    block['anom'].sel(time=ii).plot(ax=ax, transform=ccrs.PlateCarree())
+    block['flag'].sel(time=ii).plot.contour(ax=ax, levels=np.arange(8950,9030,2),transform=ccrs.PlateCarree())
     ax.coastlines()
     plt.show()
+    ii = ii+datetime.timedelta(1)
     
 # plot frequency
-ax = plt.axes(projection=ccrs.PlateCarree())
-(xr.where(block['flag']>1,1,0).sum(dim='time')/block.ntime).plot()
-ax.set_global(); ax.coastlines();
+fig, ax = plt.subplots(figsize=(7, 5), subplot_kw={'projection': ccrs.NorthPolarStereo()})
+(xr.where(block['flag']>1,1,0).sum(dim='time')/block.ntime*100).plot(levels=np.arange(2,21,2), cmap='Oranges', extend = 'max', transform=ccrs.PlateCarree())
+(xr.where(block['flag']>1,1,0).sum(dim='time')/block.ntime*100).plot.contour(colors='grey', linewidths=0.8, levels=np.arange(2,21,2), transform=ccrs.PlateCarree())
+ax.set_extent([-180, 180, 30, 90], crs=ccrs.PlateCarree()); ax.coastlines();
+plt.savefig('data/fig/era5_blockingfreq_DJF.png', dpi=600)
 
 
 block.read_xarray(a)
