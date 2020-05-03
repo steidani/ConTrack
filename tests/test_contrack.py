@@ -476,7 +476,7 @@ block.read('data/era5_1981-2010_z_500.nc')
 # block.read('data/anom_1981_2010.nc')
 
 
-
+pypi-AgENdGVzdC5weXBpLm9yZwIkNjdmOGYyMWYtOTVjYy00MTM3LTgyYTItNzZhNjAxYTEzNGUyAAIleyJwZXJtaXNzaW9ucyI6ICJ1c2VyIiwgInZlcnNpb24iOiAxfQAABiA8zF5_IPHXfhmZu2sPO5hpi0kN32QORX2yAC3tqKCSkA
 
 # clean data
 # Step 1: remove leap day
@@ -485,6 +485,8 @@ block._ds = block._ds.sel(time=~((block._ds.time.dt.month == 2) & (block._ds.tim
 block._ds = block._ds.sel(time=block._ds.time.dt.month.isin([1, 2, 12]))
 
 block._ds = block._ds.chunk({'time': 365, 'longitude': 10})
+
+block.z = block.z.chunk({'time': 365, 'longitude': 10})
 
 # calculate geopotential height
 block.calculate_gph_from_gp()

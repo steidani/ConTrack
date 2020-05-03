@@ -1,24 +1,27 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 from setuptools import setup, find_packages
 
 
-with open('README.rst') as f:
+with open("README.rst", "r") as f:
     readme = f.read()
 
-with open('LICENSE') as f:
-    license = f.read()
-
 setup(
-    name='ConTrack',
-    version='0.1.0',
-    description='Contour Tracking package for analysing circulation anomalies in Weather and Climate Data.',
+    name="ConTrack",
+    version="0.1.0",
+    description="Contour Tracking of circulation anomalies in Weather and Climate Data.",
     long_description=readme,
-    author='Daniel Steinfeld',
-    author_email='daniel.steinfeld@alumni.ethz-.ch',
-    url='https://github.com/steidani/ConTrack',
-    license=license,
-    packages=find_packages(exclude=('tests', 'docs')),
-    keywords=['data', 'science', 'meteorology', 'climate', 'atmospheric blocking', 'troughs and ridges']
+    long_description_content_type="text/x-rst",
+    author="steidani",
+    author_email="daniel.steinfeld@alumni.ethz.ch",
+    url="https://github.com/steidani/ConTrack",
+    packages=find_packages(exclude=("tests", "docs")),
+    python_requires=">=3.6",
+    install_requires=open("requirements.txt").read().split(),
+    classifiers=[
+        "Programming Language :: Python :: 3",
+	"License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
+    ],
+    keywords=["data", "science", "meteorology", "climate", "atmospheric blocking", "troughs and ridges"]
 )

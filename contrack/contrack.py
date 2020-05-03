@@ -10,7 +10,8 @@ TO DO
     - calculate clim: take precalculated era5 clim
         - use dask for out of memory problem
     - smooth anomaly field with 2 day running mean
-    . detection: larger OR smaller as threshold
+    - detection: larger OR smaller as threshold
+    - run set_up at beginning of run_contrack
 """
 
 # =======
@@ -576,7 +577,7 @@ class contrack(object):
             "########### \n"
             "    threshold:    {}\n"
             "    overlap:      {} %\n"
-            "    persistency:  {} days".format(
+            "    persistence:  {} days".format(
                 threshold, overlap, persistence)
         )
         
@@ -598,7 +599,7 @@ class contrack(object):
                           
                     
         #step 3: overlapping
-        logger.info("Check for overlap...")
+        logger.info("Apply overlap...")
         var = self._ds['time'].to_index()
         dime = np.unique((var[1:] - var[:-1]).astype('timedelta64[D]'))
         var = self._ds['latitude'].data
@@ -640,7 +641,7 @@ class contrack(object):
                         
         # step 4: persistency
         # find features along time axis
-        logger.info("Check for persistency...")
+        logger.info("Apply persistence...")
         flag, num_features = ndimage.label(flag, structure = np.array([[[0, 0, 0], [0,1,0], [0,0,0]],
                                                                       [[1, 1, 1], [1,1,1], [1,1,1]],
                                                                       [[0, 0, 0], [0,1,0], [0,0,0]]]))
