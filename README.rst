@@ -28,7 +28,7 @@ v0.1.0 (20.04.2020):
 Install the development environment
 -----------------------------------
 
-Copy locally the latest version from lagranto:
+Copy locally the latest version from ConTrack:
 
 .. code-block:: bash
 
