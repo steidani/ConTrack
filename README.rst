@@ -79,4 +79,6 @@ Example: Calculate blocking climatology
    ax.set_extent([-180, 180, 30, 90], crs=ccrs.PlateCarree()); ax.coastlines();
    plt.show()
 
-
+.. image:: docs/era5_blockingfreq_DJF.png
+  :width: 400
+  :alt: Mean blocking frequency for Winter 1981 - 2010 [color shading, %]
