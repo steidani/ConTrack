@@ -6,7 +6,7 @@ ConTrack - Contour Tracking
 Tracking of circulation anomalies in weather and climate data
 =============================================================
 
-Based on the atmospheric blocking index by Schwierz et al. (2004).  
+Based on the atmospheric blocking index by Schwierz et al. (2004) developed at the `Institute for Atmospheric and Climate Science, ETH Zurich <https://iac.ethz.ch/group/atmospheric-dynamics.html>`_
 
 See also:  
 
