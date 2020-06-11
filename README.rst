@@ -41,6 +41,8 @@ Tutorial
 ==========
 
 .. code-block:: python 
-    import contrack as contrack
+   
+   # import contrack module 
+   import contrack as contrack
 
 
