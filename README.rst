@@ -36,3 +36,11 @@ Copy locally the latest version from ConTrack:
     git clone git@github.com:steidani/ConTrack.git /path/to/local/contrack
     cd path/to/local/contrack
 
+==========
+Tutorial
+==========
+
+.. code-block:: python 
+    import contrack as contrack
+
+
