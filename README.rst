@@ -40,9 +40,43 @@ Copy locally the latest version from ConTrack:
 Tutorial
 ==========
 
+Example: Calculate blocking climatology 
+--------------------
+
 .. code-block:: python 
    
    # import contrack module 
-   import contrack as contrack
+   from contrack import contrack
+
+   # initiate blocking instance
+   block = contrack()
+   
+   # read ERA5 z500 (geopotential at 500 hPa)
+   block.read('data/era5_1981-2010_z_500.nc')
+
+   # calculate geopotential height
+   block.calculate_gph_from_gp(gp_name='z',
+                               gp_unit='m**2 s**-2',
+                               gph_name='z_height')
+
+   # calculate z500 anomaly
+   block.calc_anom('z_height', window=31)
+
+   # Finally, calculate blocking
+   block.run_contrack('anom', 
+                      threshold=150,
+                      overlap=0.5,
+                      persistence=5)
+
+   # plotting blocking frequency for winter over Northern Hemisphere
+
+   import matplotlib.pyplot as plt
+   import cartopy.crs as ccrs
+
+   fig, ax = plt.subplots(figsize=(7, 5), subplot_kw={'projection': ccrs.NorthPolarStereo()})
+   (xr.where(block['flag']>1,1,0).sum(dim='time')/block.ntime*100).plot(levels=np.arange(2,21,2), cmap='Oranges', extend = 'max', transform=ccrs.PlateCarree())
+   (xr.where(block['flag']>1,1,0).sum(dim='time')/block.ntime*100).plot.contour(colors='grey', linewidths=0.8, levels=np.arange(2,21,2), transform=ccrs.PlateCarree())
+   ax.set_extent([-180, 180, 30, 90], crs=ccrs.PlateCarree()); ax.coastlines();
+   plt.show()
 
 
