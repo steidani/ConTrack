@@ -80,7 +80,6 @@ Example: Calculate blocking climatology
    plt.show()
 
 .. image:: docs/era5_blockingfreq_DJF.png
-  :width: 200
+  :width: 300
   :alt: Mean blocking frequency for Winter 1981 - 2010 [color shading, %]
 
-  Mean blocking frequency for Winter 1981 - 2010 [color shading, %]
