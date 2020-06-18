@@ -20,8 +20,7 @@ See also:
 - `Steinfeld and Pfahl (2019) <https://doi.org/10.1007/s00382-019-04919-6>`_
 - `Steinfeld et al. (2020) <https://doi.org/10.5194/wcd-2020-5>`_
 
-The PV-Anomaly blocking climatology used in Steinfeld and Pfahl (2019) is publicly available via an ETH Zurich-based web server [`http://eraiclim.ethz.ch/ <http://eraiclim.ethz.ch/>`_ , see `Sprenger et al. (2017) <https://doi.org/10.1175/BAMS-D-15-00299.1
->`_].  
+The PV-Anomaly blocking climatology used in Steinfeld and Pfahl (2019) is publicly available via an ETH Zurich-based web server [`http://eraiclim.ethz.ch/ <http://eraiclim.ethz.ch/>`_ , see `Sprenger et al. (2017) <https://doi.org/10.1175/BAMS-D-15-00299.1>`_].  
 
 ==========
 What's New
