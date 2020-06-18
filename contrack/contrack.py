@@ -12,6 +12,7 @@ TO DO
     - smooth anomaly field with 2 day running mean
     - detection: larger OR smaller as threshold
     - run set_up at beginning of run_contrack
+    - era5 clim store on github (see xarray.toturoal) to be used to calculate anom
 """
 
 # =======
@@ -662,13 +663,14 @@ class contrack(object):
         
         num_features = len(np.unique(flag))        
         # create new variable flag
+        logger.info("Create new variable 'flag'...")
         self._ds['flag'] = xr.Variable(
             self._ds[variable].dims,
             flag,
             attrs={
-                'units': self._ds[variable].attrs['units'],
-                'long_name': self._ds[variable].attrs['long_name'] + ' Anomaly',
-                'standard_name': self._ds[variable].attrs['long_name'] + ' anomaly',
+                'units': 'flag',
+                'long_name': 'contrack flag',
+                'standard_name': 'contrack flag',
                 'history': 'Calculated from {}.'.format(variable)}
         )
         logger.info("Calculating Blocking.. DONE\n"

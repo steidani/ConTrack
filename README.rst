@@ -1,3 +1,7 @@
+.. image:: docs/logo_contrack_2.png
+   :width: 30 px
+   :align: center
+
 
 ###########################
 ConTrack - Contour Tracking

@@ -472,11 +472,8 @@ from contrack import contrack
 # initiate blocking instance
 block = contrack()
 # read ERA5
-block.read('data/era5_1981-2010_z_500.nc')
+block.read('data/era5_2016_z_500.nc')
 # block.read('data/anom_1981_2010.nc')
-
-
-pypi-AgENdGVzdC5weXBpLm9yZwIkNjdmOGYyMWYtOTVjYy00MTM3LTgyYTItNzZhNjAxYTEzNGUyAAIleyJwZXJtaXNzaW9ucyI6ICJ1c2VyIiwgInZlcnNpb24iOiAxfQAABiA8zF5_IPHXfhmZu2sPO5hpi0kN32QORX2yAC3tqKCSkA
 
 # clean data
 # Step 1: remove leap day
@@ -578,9 +575,13 @@ ax.coastlines()
 
 # calc mean
 var_mean = block.calc_mean(variable="z")
-var_mean.plot()
+var_mean.sel(expver=5).plot()
 block1 = blocking(filename='data/era5_2019_z500.nc')
 block2 = blocking(ds=ds_era)
+
+fig, ax = plt.subplots(figsize=(7, 5), subplot_kw={'projection': ccrs.NorthPolarStereo()})
+var_mean.sel(expver=5).plot.contour(transform=ccrs.PlateCarree())
+ax.set_extent([-180, 180, 30, 90], crs=ccrs.PlateCarree()); ax.coastlines();
 
 blocking.set_raise_amt(1.05)
 print(blocking.apply_raise)
@@ -588,6 +589,8 @@ print(block.raise_amt)
 isinstance(block, blocking) # True
 my_date = datetime.date(2016, 7, 11)
 print(blocking.is_workday(my_date))
+
+
 
 #%%
 
