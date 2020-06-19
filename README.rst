@@ -1,4 +1,4 @@
-.. image:: docs/logo_contrack_2.png
+.. image:: docs/logo_contrack.png
    :width: 30 px
    :align: center
 
