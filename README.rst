@@ -7,7 +7,7 @@
 ConTrack - Contour Tracking
 ###########################
 =============================================================
-Tracking of circulation anomalies in weather and climate data
+Spatial and temporal tracking of circulation anomalies in weather and climate data
 =============================================================
 
 Based on the atmospheric blocking index by `Schwierz et al. (2004) <https://doi.org/10.1029/2003GL019341>`_ developed at the `Institute for Atmospheric and Climate Science, ETH Zurich <https://iac.ethz.ch/group/atmospheric-dynamics.html>`_.
@@ -19,6 +19,7 @@ See also:
 - `Pfahl et al. (2015) <https://www.nature.com/articles/ngeo2487>`_
 - `Steinfeld and Pfahl (2019) <https://doi.org/10.1007/s00382-019-04919-6>`_
 - `Steinfeld et al. (2020) <https://doi.org/10.5194/wcd-2020-5>`_
+- and used in many more atmospheric blocking studies...
 
 The PV-Anomaly blocking climatology used in Steinfeld and Pfahl (2019) is publicly available via an ETH Zurich-based web server [`http://eraiclim.ethz.ch/ <http://eraiclim.ethz.ch/>`_ , see `Sprenger et al. (2017) <https://doi.org/10.1175/BAMS-D-15-00299.1>`_].  
 
@@ -56,7 +57,7 @@ Example: Calculate blocking climatology
    # initiate blocking instance
    block = contrack()
    
-   # read ERA5 z500 (geopotential at 500 hPa)
+   # read ERA5 z500 (geopotential at 500 hPa, daily with 1° spatial resolution)
    block.read('data/era5_1981-2010_z_500.nc')
 
    # calculate geopotential height
@@ -64,12 +65,13 @@ Example: Calculate blocking climatology
                                gp_unit='m**2 s**-2',
                                gph_name='z_height')
 
-   # calculate z500 anomaly
+   # calculate z500 anomaly with respect to 31-day running mean (long-term) climatology, 
    block.calc_anom('z_height', window=31)
 
    # Finally, calculate blocking
-   block.run_contrack('anom', 
+   block.run_contrack(variable='anom', 
                       threshold=150,
+		      gorl='gt'
                       overlap=0.5,
                       persistence=5)
 

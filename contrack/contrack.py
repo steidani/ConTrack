@@ -10,9 +10,7 @@ TO DO
     - calculate clim: take precalculated era5 clim
         - use dask for out of memory problem
     - smooth anomaly field with 2 day running mean
-    - detection: larger OR smaller as threshold
-    - run set_up at beginning of run_contrack
-    - era5 clim store on github (see xarray.toturoal) to be used to calculate anom
+    - era5 clim store on github (see xarray.toturial) to be used to calculate anom
 """
 
 # =======
@@ -47,7 +45,7 @@ except:
 
 
 # =============================================================================
-# blocking class
+# contrack class
 # =============================================================================
 
 class contrack(object):
@@ -56,8 +54,8 @@ class contrack(object):
     Author : Daniel Steinfeld, ETH Zurich , 2020
     """
 
-    # number of block instances initiated
-    num_of_blocks = 0
+    # number of instances initiated
+    num_of_contrack = 0
 
     def __init__(self, filename="", ds=None, **kwargs):
         """The constructor for contrack class. Initialize a contrack instance.
@@ -75,21 +73,21 @@ class contrack(object):
         """
         if not filename:
             if ds is None:
-                self._ds = None
+                self.ds = None
             else:
-                self._ds = ds
+                self.ds = ds
             return
         
         try:
-            self._ds = None
+            self.ds = None
             self.read(filename, **kwargs)
         except (OSError, IOError, RuntimeError):
             try:
                 self.read(filename, **kwargs)
             except Exception:
-                raise IOError("Unkown fileformat. Known formats " "are netcdf.")
+                raise IOError("Unkown fileformat. Known formats are netcdf.")
 
-        contrack.num_of_blocks += 1
+        contrack.num_of_contrack += 1
     
     def __repr__(self):
         try:
@@ -106,46 +104,46 @@ class contrack(object):
         return string
 
     def __str__(self):
-        return 'Class {}: \n{}'.format(self.__class__.__name__, self._ds)
+        return 'Class {}: \n{}'.format(self.__class__.__name__, self.ds)
   
     def __len__(self):
-        return len(self._ds)
+        return len(self.ds)
     
     def __getattr__(self, attr):
         if attr in self.__dict__:
             return getattr(self, attr)
-        return getattr(self._ds, attr)
+        return getattr(self.ds, attr)
 
     
     def __getitem__(self, key):
-        return self._ds[key]
+        return self.ds[key]
 
     @property
     def ntime(self):
         """Return the number of time steps"""
-        if len(self._ds.dims) != 3:
+        if len(self.ds.dims) != 3:
             logger.warning(
                 "\nBe careful with the dimensions, "
                 "you want dims = 3 and shape:\n"
                 "(latitude, longitude, time)"
             )
-            return None
-        return self._ds.dims['time']
+            return self.ds.dims[self._get_name_time()]
+        return self.ds.dims[self._get_name_time()]
 
     @property
     def variables(self):
         """Return the names of the variables"""
-        return list(self._ds.data_vars)
+        return list(self.ds.data_vars)
     
     @property
     def dimensions(self):
         """Return the names of the dimensions"""
-        return list(self._ds.dims)
+        return list(self.ds.dims)
     
     @property
     def grid(self):
         """Return the number of longitude and latitude grid"""
-        if len(self._ds.dims) != 3:
+        if len(self.ds.dims) != 3:
             logger.warning(
                 "\nBe careful with the dimensions, "
                 "you want dims = 3 and shape:\n"
@@ -155,17 +153,17 @@ class contrack(object):
         string = "\
         latitude: {} \n\
         longitude: {}".format(
-            self._ds.dims['latitude'], self._ds.dims['longitude']
+            self.ds.dims['latitude'], self.ds.dims['longitude']
         ) 
         print(string)
 
     @property
     def dataset(self):
         """Return the dataset"""
-        return self._ds
+        return self.ds
 
 # ----------------------------------------------------------------------------
-# Read / Import data
+# Read / Import / Save data
     
     def read(self, filename, **kwargs):
         """
@@ -176,8 +174,8 @@ class contrack(object):
             filename : string
                 Valid path + filename
         """
-        if self._ds is None:
-            self._ds = xr.open_dataset(filename, **kwargs)
+        if self.ds is None:
+            self.ds = xr.open_dataset(filename, **kwargs)
             logger.debug('read: {}'.format(self.__str__))
         else:
             errmsg = 'contrack() is already set!'
@@ -192,25 +190,24 @@ class contrack(object):
             ds: data set
                 Valid xarray data set.
         """
-        if self._ds is None:
+        if self.ds is None:
             if not isinstance(ds, xr.core.dataset.Dataset):
                 errmsg = 'ds has to be a xarray data set!'
                 raise ValueError(errmsg)
-            self._ds = ds
+            self.ds = ds
             logger.debug('read_xarray: {}'.format(self.__str__))
         else:
             errmsg = 'contrack() is already set!'
             raise ValueError(errmsg)
  
 # ----------------------------------------------------------------------------
-# Set up / Check variable and dimension
+# Set up / Check dimensions
    
-
     def set_up(self,
                time_name=None,
                longitude_name=None,
                latitude_name=None,
-               variable_name=None
+               force=False
     ):
         """
         Prepares the dataset for contour tracking. Does consistency checks
@@ -219,14 +216,14 @@ class contrack(object):
 
         Parameters
         ----------
-            time_name : TYPE, optional
+            time_name : string, optional
                 Name of time dimension. The default is None.
-            longitude_name : TYPE, optional
+            longitude_name : string, optional
                 Name of longitude dimension. The default is None.
-            latitude_name : TYPE, optional
+            latitude_name : string, optional
                 Name of latitude dimension. The default is None.
-            variable_name : TYPE, optional
-                Name of variable used for blocking. The default is 'Geopotential height'.
+            force=False: bool, optional 
+                Skip some consistency checks.
 
         Returns
         -------
@@ -234,7 +231,7 @@ class contrack(object):
 
         """
 
-        # check dimensions
+        # set dimensions
         if time_name is None:
             self._time_name = self._get_name_time()  
         else:
@@ -246,37 +243,24 @@ class contrack(object):
         if latitude_name is None:
             self._latitude_name = self._get_name_latitude()
         else:
-            self._longitude_name = latitude_name
-        # check variable
-        if variable_name is None:
-            self._variable_name = self._get_name_variable()
-        else:
-            if variable_name not in self.variables:
-                logger.warning(
-                    "\n Variable '{}' not found. "
-                    "Select from {}.".format(
-                variable_name, self.variables)
-                )
-            else:
-                self._variable_name = variable_name
+            self._latitude_name = latitude_name
+
         # set resolution
         if (self._longitude_name and self._latitude_name) is not None:
-            self._dlon =  self._get_resolution(self._longitude_name)
-            self._dlat =  self._get_resolution(self._latitude_name)
+            self._dlon =  self._get_resolution(self._longitude_name, force=force)
+            self._dlat =  self._get_resolution(self._latitude_name, force=force)
 
         if self._time_name is not None:
-            self._dtime = self._get_resolution(self._time_name)
+            self._dtime = self._get_resolution(self._time_name, force=force)
        
         # print names       
         logger.info(
             "\n time: '{}'\n"
             " longitude: '{}'\n"
-            " latitude: '{}'\n"
-            " variable: '{}'\n".format(
+            " latitude: '{}'\n".format(
             self._time_name, 
             self._longitude_name,
-            self._latitude_name,
-            self._variable_name)
+            self._latitude_name)
         )
 
     
@@ -285,18 +269,18 @@ class contrack(object):
         check for 'time' dimension and return name
         """
         # check unit
-        for dim in self._ds.dims:
-            if (('units' in self._ds[dim].attrs and
-                'since' in self._ds[dim].attrs['units']) or 
-                ('units' in self._ds[dim].encoding and
-                 'since' in self._ds[dim].encoding['units'])):
+        for dim in self.ds.dims:
+            if (('units' in self.ds[dim].attrs and
+                'since' in self.ds[dim].attrs['units']) or 
+                ('units' in self.ds[dim].encoding and
+                 'since' in self.ds[dim].encoding['units'])):
                 return dim
         # check dtype
-        for dim in self._ds.variables:
+        for dim in self.ds.variables:
             try:
-                var = self._ds[dim].data[0]
+                var = self.ds[dim].data[0]
             except IndexError:
-                var = self._ds[dim].data
+                var = self.ds[dim].data
             if isinstance(var, datetime64):
                 return dim   
         # no 'time' dimension found
@@ -310,9 +294,9 @@ class contrack(object):
         """
         check for 'longitude' dimension and return name
         """
-        for dim in self._ds.dims:
-            if ('units' in self._ds[dim].attrs and
-               self._ds[dim].attrs['units'] in ['degree_east', 'degrees_east']):
+        for dim in self.ds.dims:
+            if ('units' in self.ds[dim].attrs and
+               self.ds[dim].attrs['units'] in ['degree_east', 'degrees_east']):
                 return dim
         # no 'longitude' dimension found
         logger.warning(
@@ -325,80 +309,59 @@ class contrack(object):
         """
         check for 'latitude' dimension and return name
         """
-        for dim in self._ds.dims:
-            if ('units' in self._ds[dim].attrs  and
-                self._ds[dim].attrs['units'] in ['degree_north', 'degrees_north']):
+        for dim in self.ds.dims:
+            if ('units' in self.ds[dim].attrs  and
+                self.ds[dim].attrs['units'] in ['degree_north', 'degrees_north']):
                 return dim
         # no 'latitude' dimension found
         logger.warning(
             "\n 'latitude' dimension (unit='degrees_north') not found."
         )
         return None
-
-    def _get_name_variable(self):
-        """
-        check for 'Geopotential Height' variable and return name
-        """
-        for var in self._ds.data_vars:
-            if ('units' in self._ds[var].attrs  and
-                self._ds[var].attrs['units'] in ['gpm', 'm']):
-                return var  
-        # check for 'Geopotential'
-        for var in self._ds.data_vars:
-            if (('units' in self._ds[var].attrs  and
-                self._ds[var].attrs['units'] in ['gp', 'm**2 s**-2']) or 
-                (var in ['z', 'Geopotential'])):
-                logger.warning(
-                    "\n 'Geopotential height' variable (unit='gpm' or 'm') not found.\n"
-                    "Hint: use 'calculate_gph_from_gp({})'.".format(var)
-                )
-                return None
-        # no 'Geopotential height' dimension found
-        logger.warning(
-            "\n 'Geopotential height' variable (unit='gpm' or 'm') not found."
-        )
-        return None 
             
     def _get_resolution(self, dim, force=False):
         """
         set spatial (lat/lon) and temporal (time) resolution
         """
-        # time dimension in days
+        # time dimension in hours
         if dim == self._time_name:
             try:
-                var = self._ds[dim].to_index()
+                var = self.ds[dim].to_index()
                 delta = np.unique((
-                    self._ds[dim].to_index()[1:] - 
-                    self._ds[dim].to_index()[:-1])
-                    .astype('timedelta64[D]')
+                    self.ds[dim].to_index()[1:] - 
+                    self.ds[dim].to_index()[:-1])
+                    .astype('timedelta64[h]')
                 )
             except AttributeError:  # dates outside of normal range
                 # we can still move on if the unit is "days since ..."
-                if ('units' in self._ds[dim].attrs and
-                    'days' in self._ds[dim].attrs['units']):
-                    var = self._ds[dim].data
+                if ('units' in self.ds[dim].attrs and
+                    'days' in self.ds[dim].attrs['units']):
+                    var = self.ds[dim].data
                     delta = np.unique(var[1:] - var[:-1])
                 else:
                     errmsg = 'Can not decode time with unit {}'.format(
-                        self._ds[dim].attrs['units'])
+                        self.ds[dim].attrs['units'])
                     raise ValueError(errmsg)
         # lat/lon dimension in Degree
         else:
             delta = abs(np.unique((
-                self._ds[dim].data[1:] - 
-                self._ds[dim].data[:-1])
+                self.ds[dim].data[1:] - 
+                self.ds[dim].data[:-1])
             ))
         # check resolution
         if len(delta) > 1:
             errmsg = 'No regular grid found for dimension {}'.format(dim)
-            if force:
+            if force and dim != self._time_name:
                 logging.warning(errmsg)
                 logmsg = ' '.join(['force=True: using mean of non-equidistant',
                                    'grid {}'.format(delta)])
                 logging.warning(logmsg)
                 delta = [round(delta.mean(), 2)]
             else:
-                raise ValueError(errmsg)
+                if dim == self._time_name:
+                    logging.warning(errmsg)
+                else:
+                    raise ValueError(errmsg)
         elif delta[0] == 0:
             errmsg = 'Two equivalent values found for dimension {}.'.format(
                 dim)
@@ -440,14 +403,14 @@ class contrack(object):
         """
         g = 9.80665  # m s**-2
         # https://dx.doi.org/10.6028/NIST.SP.330e2008
-        if self._ds[gp_name].attrs['units'] != gp_unit:
+        if self.ds[gp_name].attrs['units'] != gp_unit:
             errmsg = 'Geopotential unit should be {} not {}'.format(
-                gp_unit, self._ds[gp_name].attrs['units'])
+                gp_unit, self.ds[gp_name].attrs['units'])
             raise ValueError(errmsg)
 
-        self._ds[gph_name] = xr.Variable(
-            self._ds.variables[gp_name].dims,
-            self._ds.variables[gp_name].data / g,
+        self.ds[gph_name] = xr.Variable(
+            self.ds.variables[gp_name].dims,
+            self.ds.variables[gp_name].data / g,
             attrs={
                 'units': 'm',
                 'long_name': 'Geopotential Height',
@@ -462,7 +425,7 @@ class contrack(object):
         Parameters
         ----------
             variable : string
-                Date
+                Name of variable.
 
         Returns
         -------
@@ -496,7 +459,9 @@ class contrack(object):
         Parameters
         ----------
             variable : string
-                Date
+                Input variable.
+            window : int, optional
+                number of timesteps to for climatological running mean
 
         Returns
         -------
@@ -513,19 +478,14 @@ class contrack(object):
         clim = clim.rolling(dayofyear=window, center=True).mean().fillna(
             clim[-window:].mean(dim='dayofyear')    
         )
-
-        
-        #roll1 = clim.roll(dayofyear=(window*3), roll_coords=True).rolling(dayofyear=window, center=True).mean()
-        #roll2 = clim.rolling(dayofyear=window, center=True).mean()
-        #clim = xr.concat([roll1, roll2], dim='r').mean('r')
-        #del roll1, roll2
         
         return clim
  
     
     def calc_anom(self, 
                   variable,
-                  window=31
+                  window=31,
+                  clim=""
     ):
         """
         Creates a new variable with name "anom" from variable.
@@ -537,6 +497,8 @@ class contrack(object):
                 Input variable.
             window : int, optional
                 number of timesteps to for climatological running mean
+            clim : string, optional
+                Path + Name of the file containing the climatology dataset. Regrid to resolution of variable.
 
         Returns
         -------
@@ -546,46 +508,112 @@ class contrack(object):
         """
         
         # step 1: calculate clim
-        clim = self.calc_clim(variable=variable, window=window)  
+        if not clim:
+            logger.info('Calculating Climatology from {}'.format(variable)
+                        )
+            clim = self.calc_clim(variable=variable, window=window)  
+        else:
+            logger.info('Reading Climatology from {}'.format(clim)
+                        )
+            clim = xr.open_dataset(clim)
+            
+            # check time dimension
+            if 'dayofyear' not in clim.dims:
+                clim = clim.groupby('time.dayofyear')
+            
+            # regrid
+            #clim = clim.reindex(lat=self.ds[self._latitude_name], lon=self.ds[self._longitude_name], method='nearest')
+            
+            
                
         # step 2: calculate and create new variable anomaly     
-        self._ds['anom'] = xr.Variable(
-            self._ds[variable].dims,
-            self._ds[variable].groupby('time.dayofyear') - clim,
+        self.ds['anom'] = xr.Variable(
+            self.ds[variable].dims,
+            self.ds[variable].groupby('time.dayofyear') - clim,
             attrs={
-                'units': self._ds[variable].attrs['units'],
-                'long_name': self._ds[variable].attrs['long_name'] + ' Anomaly',
-                'standard_name': self._ds[variable].attrs['long_name'] + ' anomaly',
+                'units': self.ds[variable].attrs['units'],
+                'long_name': self.ds[variable].attrs['long_name'] + ' Anomaly',
+                'standard_name': self.ds[variable].attrs['long_name'] + ' anomaly',
                 'history': 'Calculated from {}.'.format(variable)}
         )
         logger.info('Calculating Anomaly... DONE')
             
             
     def run_contrack(self,
-                  variable="anom",
-                  threshold=150,
-                  overlap=0.5,
-                  persistence=5
+                  variable,
+                  threshold,
+                  gorl,
+                  overlap,
+                  persistence,
+                  twosided=True
                   
     ):
         """
-        Define closed contours by a threshold value
+        Spatial and temporal tracking of closed contours.
+        
+        Parameters
+        ----------
+            variable : string
+                input variable.
+            threshold : int
+                threshold value to detect contours.
+            gorl : string
+                find contours that are greater or lower than threshold value [>, >=, <, >=, ge,le,gt,lt].
+            overlap : int
+                overlapping fraction of two contours between two time steps [0-1].
+            persistence : int
+                temporal persistence (in time steps) of the contour life time
+            twosided = True : bool, optional
+                if true twosided (forward and backward) overlap test, otherwise just forward (more transient contours)
+                
 
+        Returns
+        -------
+            array: float
+                flag field
+        
         """
+    
     
         logger.info(
             "\nRun ConTrack \n"
             "########### \n"
-            "    threshold:    {}\n"
-            "    overlap:      {} %\n"
-            "    persistence:  {} days".format(
-                threshold, overlap, persistence)
+            "    threshold:    {} {} \n"
+            "    overlap:      {} \n"
+            "    persistence:  {} time steps".format(
+                gorl,threshold, overlap, persistence)
         )
         
+        # Set up dimensions
+        if hasattr(self, '_time_name'):
+            # print names       
+            logger.info(
+                "\n time: '{}'\n"
+                " longitude: '{}'\n"
+                " latitude: '{}'\n".format(
+                self._time_name, 
+                self._longitude_name,
+                self._latitude_name)
+            )
+            pass
+        else:
+            logger.info("Set up dimensions...")
+            self.set_up()
         
-        # step 1: find contours (circulation anomalies)
+        
+        # step 1: find contours (greater or less than threshold)
         logger.info("Find individual contours...")
-        flag = xr.where(self._ds['anom'] >= threshold, 1, 0)
+        if gorl == '>=' or gorl == 'ge':
+            flag = xr.where(self.ds[variable] >= threshold, 1, 0)
+        elif gorl == '<=' or gorl == 'le':
+            flag = xr.where(self.ds[variable] <= threshold, 1, 0)
+        elif gorl == '>' or gorl == 'gt':
+            flag = xr.where(self.ds[variable] > threshold, 1, 0)
+        elif gorl == '<' or gorl == 'lt':
+            flag = xr.where(self.ds[variable] < threshold, 1, 0)
+        else:
+            errmsg = ' Please select from [>, >=, <, >=] for gorl'
+            raise ValueError(errmsg)
         
         # step 2: identify individual contours
         flag, num_features = ndimage.label(flag.data, structure= np.array([[[0, 0, 0], [0,0,0], [0,0,0]],
@@ -601,15 +629,9 @@ class contrack(object):
                     
         #step 3: overlapping
         logger.info("Apply overlap...")
-        var = self._ds['time'].to_index()
-        dime = np.unique((var[1:] - var[:-1]).astype('timedelta64[D]'))
-        var = self._ds['latitude'].data
-        dlat = abs(np.unique((var[1:] - var[:-1])))
-        var = self._ds['longitude'].data
-        dlon = np.unique((var[1:] - var[:-1]))
-       
-        weight_lat = np.cos(self._ds['latitude'].data*np.pi/180)
-        weight_grid = np.ones((181, 360)) * np.array((111 * dlat * 111 * dlon * weight_lat)).astype(np.float32)[:, None]
+ 
+        weight_lat = np.cos(self.ds[self._latitude_name].data*np.pi/180)
+        weight_grid = np.ones((self.ds.dims[self._latitude_name], self.ds.dims[self._longitude_name])) * np.array((111 * self._dlat * 111 * self._dlon * weight_lat)).astype(np.float32)[:, None]
 
         for tt in range(1,flag.shape[0]-1): 
             # loop over individual contours
@@ -627,16 +649,23 @@ class contrack(object):
                 fraction_backward = (1 / areacon) * areaover_backward
                 fraction_forward = (1 / areacon) * areaover_forward 
              
-                # middle
-                if fraction_backward != 0 and fraction_forward != 0:
-                    if (fraction_backward < overlap) or (fraction_forward < overlap):
-                        flag[tt][slice_][(flag[tt][slice_] == label)] = 0.
-                # decay
-                if fraction_backward != 0 and fraction_forward == 0:
-                    if (fraction_backward < overlap):
-                        flag[tt][slice_][(flag[tt][slice_] == label)] = 0.
-                # onset
-                if fraction_backward == 0 and fraction_forward != 0:        
+                # apply overlap criterion forward and backward
+                if twosided:
+                    # middle
+                    if fraction_backward != 0 and fraction_forward != 0:
+                        if (fraction_backward < overlap) or (fraction_forward < overlap):
+                            flag[tt][slice_][(flag[tt][slice_] == label)] = 0.
+                    # decay
+                    if fraction_backward != 0 and fraction_forward == 0:
+                        if (fraction_backward < overlap):
+                            flag[tt][slice_][(flag[tt][slice_] == label)] = 0.
+                    # onset
+                    if fraction_backward == 0 and fraction_forward != 0:        
+                        if (fraction_forward < overlap):
+                            flag[tt][slice_][(flag[tt][slice_] == label)] = 0.
+                            
+                # apply overlap criterion only forward (capture also more transient features)           
+                else:
                     if (fraction_forward < overlap):
                         flag[tt][slice_][(flag[tt][slice_] == label)] = 0.
                         
@@ -661,23 +690,30 @@ class contrack(object):
             if (slice_[0].stop - slice_[0].start) < persistence:
                 flag[slice_][(flag[slice_] == label)] = 0.        
         
+        # step 5: create new variable flag
         num_features = len(np.unique(flag))        
-        # create new variable flag
         logger.info("Create new variable 'flag'...")
-        self._ds['flag'] = xr.Variable(
-            self._ds[variable].dims,
+        self.ds['flag'] = xr.Variable(
+            self.ds[variable].dims,
             flag,
             attrs={
                 'units': 'flag',
                 'long_name': 'contrack flag',
                 'standard_name': 'contrack flag',
-                'history': 'Calculated from {}.'.format(variable)}
+                'history': ' '.join([
+                    'Calculated from {} with input attributes:',
+                    'threshold = {} {},',
+                    'overlap fraction = {},',
+                    'persistence time steps = {}.',
+                    'twosided = {}'])
+                    .format(variable, gorl, threshold, overlap, persistence, twosided),
+                'reference': 'https://github.com/steidani/ConTrack'}
         )
-        logger.info("Calculating Blocking.. DONE\n"
-                    "{} blocks tracked".format(num_features)
+        
+        logger.info("Running contrack... DONE\n"
+                    "{} contours tracked".format(num_features)
                     )
     
-   
 
     # def fullname(self):
     #     """Return the fullname of the instance"""
@@ -737,6 +773,28 @@ class contrack(object):
     #         return False
     #     return True    
 
-
+    # def _get_name_variable(self):
+    #     """
+    #     check for 'Geopotential Height' variable and return name
+    #     """
+    #     for var in self.ds.data_vars:
+    #         if ('units' in self.ds[var].attrs  and
+    #             self.ds[var].attrs['units'] in ['gpm', 'm']):
+    #             return var  
+    #     # check for 'Geopotential'
+    #     for var in self.ds.data_vars:
+    #         if (('units' in self.ds[var].attrs  and
+    #             self.ds[var].attrs['units'] in ['gp', 'm**2 s**-2']) or 
+    #             (var in ['z', 'Geopotential'])):
+    #             logger.warning(
+    #                 "\n 'Geopotential height' variable (unit='gpm' or 'm') not found.\n"
+    #                 "Hint: use 'calculate_gph_from_gp({})'.".format(var)
+    #             )
+    #             return None
+    #     # no 'Geopotential height' dimension found
+    #     logger.warning(
+    #         "\n 'Geopotential height' variable (unit='gpm' or 'm') not found."
+    #     )
+    #     return None 
     
 

@@ -140,7 +140,14 @@ sol2['z_mean'].sel(longitude=10, latitude=48).plot()
 ds_era['z'].sel(longitude=10, latitude=48).plot()
 clim.sel(longitude=10, latitude=48).plot()
 
+# ----- regrid clim
 
+clim = sol2.z_mean.reindex(latitude=np.arange(90,-90.5,-0.5), longitude=np.arange(0,359.5,0.5), method='nearest')
+
+ax = plt.axes(projection=ccrs.PlateCarree())
+clim[1].plot(levels=np.arange(5500,5800,1))
+#sol2.z_mean[1].plot(levels=np.arange(5500,5800,1))
+ax.set_extent([-10,10,30,40]); ax.coastlines();
 
 # step 5: calcualte anom
 ds_era['anom'] = (ds_era['z'].groupby('time.dayofyear') - sol2['z_mean']*g) 
@@ -477,11 +484,11 @@ block.read('data/era5_2016_z_500.nc')
 
 # clean data
 # Step 1: remove leap day
-block._ds = block._ds.sel(time=~((block._ds.time.dt.month == 2) & (block._ds.time.dt.day == 29)))
+block.ds = block.ds.sel(time=~((block.ds.time.dt.month == 2) & (block.ds.time.dt.day == 29)))
 
-block._ds = block._ds.sel(time=block._ds.time.dt.month.isin([1, 2, 12]))
+block.ds = block.ds.sel(time=block.ds.time.dt.month.isin([1, 2, 3, 4, 5]))
 
-block._ds = block._ds.chunk({'time': 365, 'longitude': 10})
+block.ds = block.ds.chunk({'time': 365, 'longitude': 10})
 
 block.z = block.z.chunk({'time': 365, 'longitude': 10})
 
@@ -489,9 +496,9 @@ block.z = block.z.chunk({'time': 365, 'longitude': 10})
 block.calculate_gph_from_gp()
 
 block.z_height.chunks
-block._ds = block._ds.chunk({'time': None})
+block.ds = block.ds.chunk({'time': None})
 
-# block._ds = block._ds.drop_vars('z_height')
+# block.ds = block.ds.drop_vars('z_height')
 
 # calculate clim
 #clim = block.calc_clim('z')
@@ -499,13 +506,18 @@ block._ds = block._ds.chunk({'time': None})
 
 # calculate z500 anomaly
 block.calc_anom('z_height', window=31)
-# block._ds.to_netcdf('data/anom_1981_2010.nc')
+# block.ds.to_netcdf('data/anom_1981_2010.nc')
 
 # calculate blocking
-block.run_contrack('anom', 
-                  threshold=150,
-                  overlap=0.5,
-                  persistence=5)
+block.run_contrack(variable='anom', 
+                  threshold=120,
+                  gorl='>=',
+                  overlap=0.25,
+                  persistence=10,
+                  twosided=True)
+
+block.flag.to_netcdf('data/test.nc')
+test = xr.open_dataset('data/test.nc')
 
 # plot z500 anomaly on 2 Sep 2019 (Hurricane Dorian)
 ax = plt.axes(projection=ccrs.PlateCarree())
@@ -514,24 +526,28 @@ ax.set_extent([-120, -60, 30, 90], crs=ccrs.PlateCarree())
 ax.coastlines()
 
 # plot z500 anomaly on 29 Jan 2019 (US Cold Spell)
-start_date = datetime.date(2009, 12, 1)
-end_date = datetime.date(2010, 1, 1)
+start_date = datetime.date(2016, 10, 1)
+end_date = datetime.date(2016, 10, 5)
 
 ii = start_date
 while ii <= end_date:
     ax = plt.axes(projection=ccrs.PlateCarree())
     block['anom'].sel(time=ii).plot(ax=ax, transform=ccrs.PlateCarree())
-    block['flag'].sel(time=ii).plot.contour(ax=ax, levels=np.arange(8950,9030,2),transform=ccrs.PlateCarree())
+    block['flag'].sel(time=ii).plot.contour(ax=ax,transform=ccrs.PlateCarree())
     ax.coastlines()
     plt.show()
     ii = ii+datetime.timedelta(1)
     
 # plot frequency
 fig, ax = plt.subplots(figsize=(7, 5), subplot_kw={'projection': ccrs.NorthPolarStereo()})
-(xr.where(block['flag']>1,1,0).sum(dim='time')/block.ntime*100).plot(levels=np.arange(2,21,2), cmap='Oranges', extend = 'max', transform=ccrs.PlateCarree())
+h2 = (xr.where(block['flag']>1,1,0).sum(dim='time')/block.ntime*100).plot(levels=np.arange(2,21,2), cmap='Oranges', extend = 'max', transform=ccrs.PlateCarree())
 (xr.where(block['flag']>1,1,0).sum(dim='time')/block.ntime*100).plot.contour(colors='grey', linewidths=0.8, levels=np.arange(2,21,2), transform=ccrs.PlateCarree())
 ax.set_extent([-180, 180, 30, 90], crs=ccrs.PlateCarree()); ax.coastlines();
-plt.savefig('data/fig/era5_blockingfreq_DJF.png', dpi=600)
+ax.set_title('JFMAM 1981 - 2010')
+fig_cbar = h2.colorbar
+fig_cbar.ax.set_ylabel("blocking frequency [%]")
+
+plt.savefig('data/fig/era5_blockingfreq_JFMAM.png', dpi=300)
 
 
 block.read_xarray(a)
@@ -550,7 +566,6 @@ block.grid
 block._get_name_time()
 block._get_name_latitude()
 block._get_name_longitude()
-block._get_name_variable()
 block._dtime
 block._dlat
 block._dlon
@@ -618,7 +633,7 @@ def calc_anom(self,
                 Anomalie field
 
         """
-        if variable not in self._ds.variables:
+        if variable not in self.ds.variables:
             logger.warning(
                 "\n'{}' not found.\n"
                 "Available fields: {}".format(
@@ -628,41 +643,41 @@ def calc_anom(self,
         
 
         # step 1: running mean and fill nans at start/end with mean over last window-day timesteps
-        clim = self._ds[variable].rolling(time=window, center=True).mean().fillna(
-            self._ds[variable][-window:].mean(dim='time')    
+        clim = self.ds[variable].rolling(time=window, center=True).mean().fillna(
+            self.ds[variable][-window:].mean(dim='time')    
             )
         
         if not std_dev:            
             # step 3: calculate and create new variable anomaly     
-            self._ds['anom'] = xr.Variable(
-                self._ds.variables[variable].dims,
-                self._ds.variables[variable].data - clim.data,
+            self.ds['anom'] = xr.Variable(
+                self.ds.variables[variable].dims,
+                self.ds.variables[variable].data - clim.data,
                 attrs={
-                    'units': self._ds[variable].attrs['units'],
-                    'long_name': self._ds[variable].attrs['long_name'] + ' Anomaly',
-                    'standard_name': self._ds[variable].attrs['long_name'] + ' anomaly',
+                    'units': self.ds[variable].attrs['units'],
+                    'long_name': self.ds[variable].attrs['long_name'] + ' Anomaly',
+                    'standard_name': self.ds[variable].attrs['long_name'] + ' anomaly',
                     'history': 'Calculated from {} with running mean={} days'.format(variable, window)}
             )
             logger.info('Calculating Anomaly... DONE')
         
         if std_dev:
             # step 4: calculate and create new variable standardized anomaly
-            clim_std = self._ds[variable].rolling(time=window, center=True).std()
-            fill_nans = self._ds[variable][-window:].std(dim='time')
+            clim_std = self.ds[variable].rolling(time=window, center=True).std()
+            fill_nans = self.ds[variable][-window:].std(dim='time')
             clim_std = clim_std.fillna(fill_nans)
             
-            self._ds['std_anom'] = xr.Variable(
-                self._ds.variables[variable].dims,
+            self.ds['std_anom'] = xr.Variable(
+                self.ds.variables[variable].dims,
                 xr.apply_ufunc(
                     lambda x, m, s: (x - m) / s,
-                    self._ds.variables[variable].data,
+                    self.ds.variables[variable].data,
                     clim.data,
                     clim_std.data,
                 ),
                 attrs={
                     'units': '', # standarized variable without unit
-                    'long_name': self._ds[variable].attrs['long_name'] + ' Standardized Anomaly',
-                    'standard_name': self._ds[variable].attrs['long_name'] + ' standardized anomaly',
+                    'long_name': self.ds[variable].attrs['long_name'] + ' Standardized Anomaly',
+                    'standard_name': self.ds[variable].attrs['long_name'] + ' standardized anomaly',
                     'history': 'Calculated from {} with running mean={} days'.format(variable, window)}
             )
             logger.info('Calculating Standardized Anomaly... DONE')
