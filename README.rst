@@ -31,9 +31,22 @@ v0.1.0 (20.04.2020):
 --------------------
 
 - Extend functionality: Calculating anomalies from daily (long-term) climatology.
+- ``pip install contrack`` is currently not working -> cartopy dependencies error
 
-Install the development environment
+Installation
 -----------------------------------
+
+Using pip
+~~~~~~~~~
+
+Ideally install it in a virtual environment.
+
+.. code:: bash
+
+    pip install contrack
+
+Copy locally from Github repository
+~~~~~~~~~
 
 Copy locally the latest version from ConTrack:
 
