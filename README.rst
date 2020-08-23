@@ -6,9 +6,9 @@
 ###########################
 ConTrack - Contour Tracking
 ###########################
-=============================================================
+==================================================================================
 Spatial and temporal tracking of circulation anomalies in weather and climate data
-=============================================================
+==================================================================================
 
 ConTrack is a Python package intended to simpify the process of tracking and analyzing weather systems (individual analysis or long-term climatology) in weather and climate data sets.
 
@@ -40,12 +40,12 @@ future plans:
 - calculate intensity, spatial extent and center of mass at each timestep
 - calculate anomalies based on pre-defined climatology
 
-==========
+============
 Installation
-==========
+============
 
 Using pip
-~~~~~~~~~
+---------
 
 Ideally install it in a virtual environment.
 
@@ -54,7 +54,7 @@ Ideally install it in a virtual environment.
     pip install contrack
 
 Copy from Github repository
-~~~~~~~~~
+---------------------------
 
 Copy/clone locally the latest version from ConTrack:
 
@@ -68,7 +68,7 @@ Tutorial
 ==========
 
 Example: Calculate blocking climatology 
---------------------
+---------------------------------------
 
 .. code-block:: python 
    
@@ -114,4 +114,3 @@ Example: Calculate blocking climatology
 .. image:: docs/era5_blockingfreq_DJF.png
    :width: 20 px
    :align: center
-
