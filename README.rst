@@ -85,6 +85,7 @@ Example: Calculate blocking climatology
    block = contrack()
    
    # read ERA5 Z500 (geopotential at 500 hPa, daily with 1° spatial resolution)
+   # downloaded from https://cds.climate.copernicus.eu
    block.read('data/era5_1981-2010_z_500.nc')
 
    # select only winter months January, February and December
@@ -98,7 +99,7 @@ Example: Calculate blocking climatology
    # calculate Z500 anomaly with respect to 31-day running mean (long-term) climatology, 
    block.calc_anom('z_height', window=31)
 
-   # Finally, track blocking anticyclones (150gmp, 50% overlap, 5 days persistence)
+   # Finally, track blocking anticyclones (>=150gmp, 50% overlap twosided, 5 days persistence)
    block.run_contrack(variable='anom', 
                       threshold=150,
 		      gorl='gt'
