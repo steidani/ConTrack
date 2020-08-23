@@ -10,7 +10,9 @@ ConTrack - Contour Tracking
 Spatial and temporal tracking of circulation anomalies in weather and climate data
 =============================================================
 
-Based on the atmospheric blocking index by `Schwierz et al. (2004) <https://doi.org/10.1029/2003GL019341>`_ developed at the `Institute for Atmospheric and Climate Science, ETH Zurich <https://iac.ethz.ch/group/atmospheric-dynamics.html>`_.
+ConTrack is a Python package intended to simpify the process of tracking and analyzing weather systems (individual analysis or long-term climatology) in weather and climate data sets. It is built on top of `xarray`_ and `scipy`_.
+
+Based on the (FORTRAN) atmospheric blocking index by `Schwierz et al. (2004) <https://doi.org/10.1029/2003GL019341>`_ developed at the `Institute for Atmospheric and Climate Science, ETH Zurich <https://iac.ethz.ch/group/atmospheric-dynamics.html>`_.
 
 See also:  
 
@@ -21,7 +23,7 @@ See also:
 - `Steinfeld et al. (2020) <https://doi.org/10.5194/wcd-2020-5>`_
 - and used in many more atmospheric blocking studies...
 
-The PV-Anomaly blocking climatology used in Steinfeld and Pfahl (2019) is publicly available via an ETH Zurich-based web server [`http://eraiclim.ethz.ch/ <http://eraiclim.ethz.ch/>`_ , see `Sprenger et al. (2017) <https://doi.org/10.1175/BAMS-D-15-00299.1>`_].  
+The ERA-Interim global blocking climatology used in Steinfeld and Pfahl (2019) is publicly available via an ETH Zurich-based web server [`http://eraiclim.ethz.ch/ <http://eraiclim.ethz.ch/>`_ , see `Sprenger et al. (2017) <https://doi.org/10.1175/BAMS-D-15-00299.1>`_].  
 
 ==========
 What's New
@@ -30,11 +32,17 @@ What's New
 v0.1.0 (20.04.2020): 
 --------------------
 
-- Extend functionality: Calculating anomalies from daily (long-term) climatology.
-- ``pip install contrack`` is currently not working -> cartopy dependencies error
+- Extend functionality: Calculate anomalies from daily (long-term) climatology.
+- ``pip install contrack`` is currently not working -> cartopy dependency error
 
+future plans: 
+--------------------
+- calculate intensity, spatial extent and center of mass at each timestep
+- calculate anomalies based on pre-defined climatology
+
+==========
 Installation
------------------------------------
+==========
 
 Using pip
 ~~~~~~~~~
@@ -45,10 +53,10 @@ Ideally install it in a virtual environment.
 
     pip install contrack
 
-Copy locally from Github repository
+Copy from Github repository
 ~~~~~~~~~
 
-Copy locally the latest version from ConTrack:
+Copy/clone locally the latest version from ConTrack:
 
 .. code-block:: bash
 
@@ -73,6 +81,9 @@ Example: Calculate blocking climatology
    # read ERA5 z500 (geopotential at 500 hPa, daily with 1° spatial resolution)
    block.read('data/era5_1981-2010_z_500.nc')
 
+   # select only winter months January, February and December
+   block.ds = block.ds.sel(time=block.ds.time.dt.month.isin([1, 2, 12]))
+
    # calculate geopotential height
    block.calculate_gph_from_gp(gp_name='z',
                                gp_unit='m**2 s**-2',
@@ -86,16 +97,17 @@ Example: Calculate blocking climatology
                       threshold=150,
 		      gorl='gt'
                       overlap=0.5,
-                      persistence=5)
+                      persistence=5,
+		      twosided=True)
 
-   # plotting blocking frequency for winter over Northern Hemisphere
+   # plotting blocking frequency (in %) for winter over Northern Hemisphere
 
    import matplotlib.pyplot as plt
    import cartopy.crs as ccrs
 
    fig, ax = plt.subplots(figsize=(7, 5), subplot_kw={'projection': ccrs.NorthPolarStereo()})
-   (xr.where(block['flag']>1,1,0).sum(dim='time')/block.ntime*100).plot(levels=np.arange(2,21,2), cmap='Oranges', extend = 'max', transform=ccrs.PlateCarree())
-   (xr.where(block['flag']>1,1,0).sum(dim='time')/block.ntime*100).plot.contour(colors='grey', linewidths=0.8, levels=np.arange(2,21,2), transform=ccrs.PlateCarree())
+   (xr.where(block['flag']>1,1,0).sum(dim='time')/block.ntime*100).plot(levels=np.arange(2,18,2), cmap='Oranges', extend = 'max', transform=ccrs.PlateCarree())
+   (xr.where(block['flag']>1,1,0).sum(dim='time')/block.ntime*100).plot.contour(colors='grey', linewidths=0.8, levels=np.arange(2,18,2), transform=ccrs.PlateCarree())
    ax.set_extent([-180, 180, 30, 90], crs=ccrs.PlateCarree()); ax.coastlines();
    plt.show()
 

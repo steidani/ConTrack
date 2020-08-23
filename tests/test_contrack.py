@@ -486,7 +486,11 @@ block.read('data/era5_2016_z_500.nc')
 # Step 1: remove leap day
 block.ds = block.ds.sel(time=~((block.ds.time.dt.month == 2) & (block.ds.time.dt.day == 29)))
 
-block.ds = block.ds.sel(time=block.ds.time.dt.month.isin([1, 2, 3, 4, 5]))
+# Step 2: daily mean
+block.ds = block.ds.resample(time='1D').mean()
+
+# select only wanted month
+block.ds = block.ds.sel(time=block.ds.time.dt.month.isin([1, 2, 12]))
 
 block.ds = block.ds.chunk({'time': 365, 'longitude': 10})
 
@@ -510,10 +514,10 @@ block.calc_anom('z_height', window=31)
 
 # calculate blocking
 block.run_contrack(variable='anom', 
-                  threshold=120,
+                  threshold=150,
                   gorl='>=',
-                  overlap=0.25,
-                  persistence=10,
+                  overlap=0.5,
+                  persistence=5,
                   twosided=True)
 
 block.flag.to_netcdf('data/test.nc')
@@ -543,11 +547,12 @@ fig, ax = plt.subplots(figsize=(7, 5), subplot_kw={'projection': ccrs.NorthPolar
 h2 = (xr.where(block['flag']>1,1,0).sum(dim='time')/block.ntime*100).plot(levels=np.arange(2,21,2), cmap='Oranges', extend = 'max', transform=ccrs.PlateCarree())
 (xr.where(block['flag']>1,1,0).sum(dim='time')/block.ntime*100).plot.contour(colors='grey', linewidths=0.8, levels=np.arange(2,21,2), transform=ccrs.PlateCarree())
 ax.set_extent([-180, 180, 30, 90], crs=ccrs.PlateCarree()); ax.coastlines();
-ax.set_title('JFMAM 1981 - 2010')
+ax.set_title('DJF 1981 - 2010')
 fig_cbar = h2.colorbar
 fig_cbar.ax.set_ylabel("blocking frequency [%]")
 
-plt.savefig('data/fig/era5_blockingfreq_JFMAM.png', dpi=300)
+
+plt.savefig('data/fig/era5_blockingfreq_DJF.png', dpi=300)
 
 
 block.read_xarray(a)
