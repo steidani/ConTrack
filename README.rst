@@ -10,7 +10,7 @@ ConTrack - Contour Tracking
 Spatial and temporal tracking of circulation anomalies in weather and climate data
 =============================================================
 
-ConTrack is a Python package intended to simpify the process of tracking and analyzing weather systems (individual analysis or long-term climatology) in weather and climate data sets. It is built on top of `xarray`_ and `scipy`_.
+ConTrack is a Python package intended to simpify the process of tracking and analyzing weather systems (individual analysis or long-term climatology) in weather and climate data sets.
 
 Based on the (FORTRAN) atmospheric blocking index by `Schwierz et al. (2004) <https://doi.org/10.1029/2003GL019341>`_ developed at the `Institute for Atmospheric and Climate Science, ETH Zurich <https://iac.ethz.ch/group/atmospheric-dynamics.html>`_.
 
