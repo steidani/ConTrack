@@ -26,6 +26,11 @@ See also:
 
 The ERA-Interim global blocking climatology used in Steinfeld and Pfahl (2019) is publicly available via an ETH Zurich-based web server [`http://eraiclim.ethz.ch/ <http://eraiclim.ethz.ch/>`_ , see `Sprenger et al. (2017) <https://doi.org/10.1175/BAMS-D-15-00299.1>`_].  
 
+..
+  References
+.. _xarray: https://xarray.pydata.org/en/stable/
+.. _scipy: https://www.scipy.org/
+
 ==========
 What's New
 ==========
