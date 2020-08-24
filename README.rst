@@ -90,6 +90,7 @@ Example: Calculate blocking climatology
 
    # select only winter months January, February and December
    block.ds = block.ds.sel(time=block.ds.time.dt.month.isin([1, 2, 12]))
+   # xarray.Dataset (and all its functions) can be accessed with block.ds
 
    # calculate geopotential height
    block.calculate_gph_from_gp(gp_name='z',
