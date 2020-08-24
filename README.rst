@@ -10,7 +10,7 @@ ConTrack - Contour Tracking
 Spatial and temporal tracking of circulation anomalies in weather and climate data
 ==================================================================================
 
-ConTrack is a Python package intended to simpify the process of tracking and analyzing synoptic weather features (individual systems or long-term climatology) in weather and climate datasets. This feature-based tool is mostly used to track and characterize the life cycle of atmospheric blocking, but can be used to identify upper-level troughs and ridges (storm track). It is built on top of `xarray`_ and `scipy`_.
+ConTrack is a Python package intended to simpify the process of tracking and analyzing synoptic weather features (individual systems or long-term climatology) in weather and climate datasets. This feature-based tool is mostly used to track and characterize the life cycle of atmospheric blocking, but can also be used to identify other type of anomalous features, e.g., upper-level troughs and ridges (storm track). It is built on top of `xarray`_ and `scipy`_.
 
 Based on the atmospheric blocking index (FORTRAN) by `Schwierz et al. (2004) <https://doi.org/10.1029/2003GL019341>`_ developed at the `Institute for Atmospheric and Climate Science, ETH Zurich <https://iac.ethz.ch/group/atmospheric-dynamics.html>`_.
 
@@ -106,6 +106,7 @@ Example: Calculate blocking climatology
                       overlap=0.5,
                       persistence=5,
 		      twosided=True)
+   #output: variable 'flag'. Each blocking system is identified by a unique flag/ID.
 
    # plotting blocking frequency (in %) for winter over Northern Hemisphere
    import matplotlib.pyplot as plt

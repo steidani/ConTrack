@@ -544,12 +544,12 @@ while ii <= end_date:
     
 # plot frequency
 fig, ax = plt.subplots(figsize=(7, 5), subplot_kw={'projection': ccrs.NorthPolarStereo()})
-h2 = (xr.where(block['flag']>1,1,0).sum(dim='time')/block.ntime*100).plot(levels=np.arange(2,21,2), cmap='Oranges', extend = 'max', transform=ccrs.PlateCarree())
-(xr.where(block['flag']>1,1,0).sum(dim='time')/block.ntime*100).plot.contour(colors='grey', linewidths=0.8, levels=np.arange(2,21,2), transform=ccrs.PlateCarree())
+h2 = (xr.where(block['flag']>1,1,0).sum(dim='time')/block.ntime*100).plot(levels=np.arange(2,18,2), cmap='Oranges', extend = 'max', transform=ccrs.PlateCarree())
+(xr.where(block['flag']>1,1,0).sum(dim='time')/block.ntime*100).plot.contour(colors='grey', linewidths=0.8, levels=np.arange(2,18,2), transform=ccrs.PlateCarree())
 ax.set_extent([-180, 180, 30, 90], crs=ccrs.PlateCarree()); ax.coastlines();
-ax.set_title('DJF 1981 - 2010')
-fig_cbar = h2.colorbar
-fig_cbar.ax.set_ylabel("blocking frequency [%]")
+#ax.set_title('DJF 1981 - 2010')
+#fig_cbar = h2.colorbar
+#fig_cbar.ax.set_ylabel("blocking frequency [%]")
 
 
 plt.savefig('data/fig/era5_blockingfreq_DJF.png', dpi=300)
