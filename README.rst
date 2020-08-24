@@ -12,7 +12,7 @@ Spatial and temporal tracking of circulation anomalies in weather and climate da
 
 ConTrack is a Python package intended to simpify the process of tracking and analyzing synoptic weather features (individual systems or long-term climatology) in weather and climate datasets. This feature-based tool is mostly used to track and characterize the life cycle of atmospheric blocking, but can also be used to identify other type of anomalous features, e.g., upper-level troughs and ridges (storm track). It is built on top of `xarray`_ and `scipy`_.
 
-Based on the atmospheric blocking index (FORTRAN) by `Schwierz et al. (2004) <https://doi.org/10.1029/2003GL019341>`_ developed at the `Institute for Atmospheric and Climate Science, ETH Zurich <https://iac.ethz.ch/group/atmospheric-dynamics.html>`_.
+Based on the atmospheric blocking index by `Schwierz et al. (2004) <https://doi.org/10.1029/2003GL019341>`_ (written in FORTRAN) developed at the `Institute for Atmospheric and Climate Science, ETH Zurich <https://iac.ethz.ch/group/atmospheric-dynamics.html>`_.
 
 See also:  
 
@@ -21,7 +21,7 @@ See also:
 - `Pfahl et al. (2015) <https://www.nature.com/articles/ngeo2487>`_
 - `Woollings et al. (2018) <https://link.springer.com/article/10.1007/s40641-018-0108-z#appendices>`_
 - `Steinfeld and Pfahl (2019) <https://doi.org/10.1007/s00382-019-04919-6>`_
-- `Steinfeld et al. (2020) <https://doi.org/10.5194/wcd-2020-5>`_
+- `Steinfeld et al. (2020) <https://wcd.copernicus.org/articles/1/405/2020/wcd-1-405-2020.html>`_
 - and used in many more atmospheric blocking studies...
 
 The ERA-Interim global blocking climatology used in Steinfeld and Pfahl (2019) is publicly available via an ETH Zurich-based web server [`http://eraiclim.ethz.ch/ <http://eraiclim.ethz.ch/>`_ , see `Sprenger et al. (2017) <https://doi.org/10.1175/BAMS-D-15-00299.1>`_].  
@@ -38,7 +38,7 @@ What's New
 v0.1.0 (20.04.2020): 
 --------------------
 
-- Extend functionality: Calculate anomalies from daily (long-term) climatology.
+- Extended functionality: Calculate anomalies from daily (long-term) climatology.
 - ``pip install contrack`` is currently not working -> cartopy dependency error
 
 future plans: 
