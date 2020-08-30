@@ -15,13 +15,15 @@ setup(
     author="steidani",
     author_email="daniel.steinfeld@alumni.ethz.ch",
     url="https://github.com/steidani/ConTrack",
-    packages=find_packages(exclude=("tests", "docs")),
+    packages=find_packages(exclude=("tests", "tests.*", "docs", "docs.*", "examples", "examples.*" )),
     python_requires=">=3.6",
     install_requires=open("requirements.txt").read().split(),
     classifiers=[
         "Programming Language :: Python :: 3",
 	"License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
+	"Intended Audience :: Science/Research/Meteorology",
+	"Topic :: Scientific/Engineering :: Atmospheric Science",
     ],
     keywords=["data", "science", "meteorology", "climate", "atmospheric blocking", "troughs and ridges"]
 )

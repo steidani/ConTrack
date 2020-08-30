@@ -20,7 +20,6 @@ TO DO
 import numpy as np
 import xarray as xr
 from scipy import ndimage
-import datetime
 from numpy.core import datetime64
 
 # logs
@@ -153,7 +152,7 @@ class contrack(object):
         string = "\
         latitude: {} \n\
         longitude: {}".format(
-            self.ds.dims['latitude'], self.ds.dims['longitude']
+            self.ds.dims[self._get_name_latitude()], self.ds.dims[self._get_name_longitude()]
         ) 
         print(string)
 
@@ -207,7 +206,8 @@ class contrack(object):
                time_name=None,
                longitude_name=None,
                latitude_name=None,
-               force=False
+               force=False,
+               write=True
     ):
         """
         Prepares the dataset for contour tracking. Does consistency checks
@@ -224,6 +224,8 @@ class contrack(object):
                 Name of latitude dimension. The default is None.
             force=False: bool, optional 
                 Skip some consistency checks.
+            write=True: bool, optional
+                Print name of dimensions.
 
         Returns
         -------
@@ -253,15 +255,16 @@ class contrack(object):
         if self._time_name is not None:
             self._dtime = self._get_resolution(self._time_name, force=force)
        
-        # print names       
-        logger.info(
-            "\n time: '{}'\n"
-            " longitude: '{}'\n"
-            " latitude: '{}'\n".format(
-            self._time_name, 
-            self._longitude_name,
-            self._latitude_name)
-        )
+        # print names    
+        if write:
+            logger.info(
+                "\n time: '{}'\n"
+                " longitude: '{}'\n"
+                " latitude: '{}'\n".format(
+                self._time_name, 
+                self._longitude_name,
+                self._latitude_name)
+            )
 
     
     def _get_name_time(self):
@@ -273,7 +276,8 @@ class contrack(object):
             if (('units' in self.ds[dim].attrs and
                 'since' in self.ds[dim].attrs['units']) or 
                 ('units' in self.ds[dim].encoding and
-                 'since' in self.ds[dim].encoding['units'])):
+                 'since' in self.ds[dim].encoding['units']) or
+                dim in ['time']):
                 return dim
         # check dtype
         for dim in self.ds.variables:
@@ -295,9 +299,10 @@ class contrack(object):
         check for 'longitude' dimension and return name
         """
         for dim in self.ds.dims:
-            if ('units' in self.ds[dim].attrs and
-               self.ds[dim].attrs['units'] in ['degree_east', 'degrees_east']):
-                return dim
+            if (('units' in self.ds[dim].attrs and
+               self.ds[dim].attrs['units'] in ['degree_east', 'degrees_east']) or
+               dim in ['lon', 'longitude', 'x']):
+               return dim
         # no 'longitude' dimension found
         logger.warning(
             "\n 'longitude' dimension (unit='degrees_east') not found."
@@ -310,8 +315,9 @@ class contrack(object):
         check for 'latitude' dimension and return name
         """
         for dim in self.ds.dims:
-            if ('units' in self.ds[dim].attrs  and
-                self.ds[dim].attrs['units'] in ['degree_north', 'degrees_north']):
+            if (('units' in self.ds[dim].attrs  and
+                self.ds[dim].attrs['units'] in ['degree_north', 'degrees_north']) or
+                dim in ['lat', 'latitude', 'y']):
                 return dim
         # no 'latitude' dimension found
         logger.warning(
@@ -418,7 +424,8 @@ class contrack(object):
                 'history': 'Calculated from {} with g={}'.format(gp_name, g)})
         logger.info('Calculating GPH from GP... DONE')
     
-    def calc_mean(self, variable=""):
+    
+    def calc_mean(self, variable):
         """
         Calculate mean along time axis for variable
 
@@ -466,14 +473,14 @@ class contrack(object):
         Returns
         -------
             array:  float
-                daily (long-term) climatological mean
+                daily (long-term) climatological mean with time dimension: dayofyear
 
         """
         
         # step 1: long-term daily mean
-        clim = self[variable].groupby('time.dayofyear').mean('time')
-     
-        clim = clim.chunk({'dayofyear': None})
+        clim = self[variable].groupby(self._time_name + '.dayofyear').mean(self._time_name)
+        #clim = clim.chunk({'dayofyear': None})
+        
         # step 2: running mean ( with periodic boundary)
         clim = clim.rolling(dayofyear=window, center=True).mean().fillna(
             clim[-window:].mean(dim='dayofyear')    
@@ -496,7 +503,7 @@ class contrack(object):
             variable : string
                 Input variable.
             window : int, optional
-                number of timesteps to for climatological running mean
+                number of timesteps for climatological running mean
             clim : string, optional
                 Path + Name of the file containing the climatology dataset. Regrid to resolution of variable.
 
@@ -507,29 +514,43 @@ class contrack(object):
 
         """
         
+        # Set up dimensions
+        logger.info("Set up dimensions...")
+        if hasattr(self, '_time_name'):
+            # print names       
+            logger.info(
+                "\n time: '{}'\n"
+                " longitude: '{}'\n"
+                " latitude: '{}'\n".format(
+                self._time_name, 
+                self._longitude_name,
+                self._latitude_name)
+            )
+            pass
+        else:
+            self.set_up()
+        
         # step 1: calculate clim
         if not clim:
-            logger.info('Calculating Climatology from {}'.format(variable)
+            logger.info('Calculating Climatology from {}...'.format(variable)
                         )
             clim = self.calc_clim(variable=variable, window=window)  
         else:
-            logger.info('Reading Climatology from {}'.format(clim)
+            logger.info('Reading Climatology from {}...'.format(clim)
                         )
             clim = xr.open_dataset(clim)
             
             # check time dimension
             if 'dayofyear' not in clim.dims:
-                clim = clim.groupby('time.dayofyear')
+                clim = clim.groupby(self._time_name + '.dayofyear')
             
-            # regrid
-            #clim = clim.reindex(lat=self.ds[self._latitude_name], lon=self.ds[self._longitude_name], method='nearest')
-            
-            
+            # regrid        - asume dimensions have same name
+            clim = clim.reindex({self._latitude_name:self.ds[self._latitude_name], self._longitude_name:self.ds[self._longitude_name]}, method='nearest')
                
         # step 2: calculate and create new variable anomaly     
         self.ds['anom'] = xr.Variable(
             self.ds[variable].dims,
-            self.ds[variable].groupby('time.dayofyear') - clim,
+            self.ds[variable].groupby(self._time_name + '.dayofyear') - clim,
             attrs={
                 'units': self.ds[variable].attrs['units'],
                 'long_name': self.ds[variable].attrs['long_name'] + ' Anomaly',
@@ -585,6 +606,7 @@ class contrack(object):
         )
         
         # Set up dimensions
+        logger.info("Set up dimensions...")
         if hasattr(self, '_time_name'):
             # print names       
             logger.info(
@@ -597,7 +619,6 @@ class contrack(object):
             )
             pass
         else:
-            logger.info("Set up dimensions...")
             self.set_up()
         
         

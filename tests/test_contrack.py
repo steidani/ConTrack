@@ -480,14 +480,14 @@ from contrack import contrack
 block = contrack()
 # read ERA5
 block.read('data/era5_2016_z_500.nc')
-# block.read('data/anom_1981_2010.nc')
+# block.read('data/VAPVA2016_lowres')
 
 # clean data
 # Step 1: remove leap day
 block.ds = block.ds.sel(time=~((block.ds.time.dt.month == 2) & (block.ds.time.dt.day == 29)))
 
 # Step 2: daily mean
-block.ds = block.ds.resample(time='1D').mean()
+block.ds = block.ds.resample(time='1D', keep_attrs=True).mean(keep_attrs=True)
 
 # select only wanted month
 block.ds = block.ds.sel(time=block.ds.time.dt.month.isin([1, 2, 12]))
@@ -510,23 +510,37 @@ block.ds = block.ds.chunk({'time': None})
 
 # calculate z500 anomaly
 block.calc_anom('z_height', window=31)
+block.calc_anom('z_height', window=31, clim='data/era5_1981_2010_z_clim.nc')
 # block.ds.to_netcdf('data/anom_1981_2010.nc')
 
+block.ds['anom'] = xr.Variable(
+    block.ds['z_height'].dims,
+    block.ds['z_height'].groupby('time.dayofyear') - cliom.z_mean.reindex({'latitude':block.ds.latitude, 'longitude':block.ds.longitude}, method = 'nearest'),
+    attrs={
+        'units': block.ds['z_height'].attrs['units'],
+        'long_name': block.ds['z_height'].attrs['long_name'] + ' Anomaly',
+        'standard_name': block.ds['z_height'].attrs['long_name'] + ' anomaly',
+        'history': 'Calculated from {}.'.format('z_height')}
+)
+
+
+
 # calculate blocking
-block.run_contrack(variable='anom', 
-                  threshold=150,
-                  gorl='>=',
+block.run_contrack(variable='PV', 
+                  threshold=-1.1,
+                  gorl='<=',
                   overlap=0.5,
                   persistence=5,
-                  twosided=True)
+                  twosided=False)
 
 block.flag.to_netcdf('data/test.nc')
 test = xr.open_dataset('data/test.nc')
 
 # plot z500 anomaly on 2 Sep 2019 (Hurricane Dorian)
 ax = plt.axes(projection=ccrs.PlateCarree())
-block['anom'].sel(time='2019-09-5').plot(ax=ax, transform=ccrs.PlateCarree())
-ax.set_extent([-120, -60, 30, 90], crs=ccrs.PlateCarree())
+block['PV'].sel(time='2016-10-8').plot(ax=ax, transform=ccrs.PlateCarree())
+block['flag'].sel(time='2016-10-8').plot.contour(ax=ax, transform=ccrs.PlateCarree())
+ax.set_extent([-120, 60, 30, 90], crs=ccrs.PlateCarree())
 ax.coastlines()
 
 # plot z500 anomaly on 29 Jan 2019 (US Cold Spell)
