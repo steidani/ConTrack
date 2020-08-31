@@ -323,7 +323,7 @@ arr[:,70:110,:] = 0
 
 # STEP 4: overlapping: 50% between successive days
 import time
-lat = ds_era['latitude'].data
+lat = block['latitude'].data
 weight_lat = np.cos(lat*np.pi/180)
 overlap = 0.5 # in %
 #sinlat = (np.sin(np.deg2rad(45))/np.sin(np.deg2rad(lat)))
@@ -506,40 +506,34 @@ block.ds = block.ds.chunk({'time': None})
 
 # calculate clim
 #clim = block.calc_clim('z')
+clim = xr.open_dataset('data/era5_1981_2010_z_clim.nc')
+clim_mean = clim.z_mean
 
 
 # calculate z500 anomaly
-block.calc_anom('z_height', window=31)
+block.calc_anom('z_height', window=31, smooth=2)
 block.calc_anom('z_height', window=31, clim='data/era5_1981_2010_z_clim.nc')
+block.calc_anom('z_height', window=31, clim=clim_mean)
 # block.ds.to_netcdf('data/anom_1981_2010.nc')
-
-block.ds['anom'] = xr.Variable(
-    block.ds['z_height'].dims,
-    block.ds['z_height'].groupby('time.dayofyear') - cliom.z_mean.reindex({'latitude':block.ds.latitude, 'longitude':block.ds.longitude}, method = 'nearest'),
-    attrs={
-        'units': block.ds['z_height'].attrs['units'],
-        'long_name': block.ds['z_height'].attrs['long_name'] + ' Anomaly',
-        'standard_name': block.ds['z_height'].attrs['long_name'] + ' anomaly',
-        'history': 'Calculated from {}.'.format('z_height')}
-)
-
 
 
 # calculate blocking
-block.run_contrack(variable='PV', 
-                  threshold=-1.1,
-                  gorl='<=',
+block.run_contrack(variable='anom', 
+                  threshold=150,
+                  gorl='>=',
                   overlap=0.5,
                   persistence=5,
                   twosided=False)
+
+test = block.run_lifecycle(flag='flag', variable='anom')
 
 block.flag.to_netcdf('data/test.nc')
 test = xr.open_dataset('data/test.nc')
 
 # plot z500 anomaly on 2 Sep 2019 (Hurricane Dorian)
 ax = plt.axes(projection=ccrs.PlateCarree())
-block['PV'].sel(time='2016-10-8').plot(ax=ax, transform=ccrs.PlateCarree())
-block['flag'].sel(time='2016-10-8').plot.contour(ax=ax, transform=ccrs.PlateCarree())
+block['anom'].sel(time='2016-10-08').plot(ax=ax, transform=ccrs.PlateCarree())
+block['flag'].sel(time='2016-10-08').plot.contour(ax=ax, transform=ccrs.PlateCarree())
 ax.set_extent([-120, 60, 30, 90], crs=ccrs.PlateCarree())
 ax.coastlines()
 
@@ -627,6 +621,321 @@ print(blocking.is_workday(my_date))
 
 
 #%%
+
+def blocks_lifecycle():
+    """
+    Blocking life cycle for individual blocking events:
+    
+    Read Blocking Flag (output of caltrack)
+    Calculate blocking statistics at every timestep and write metrics to csv file.
+    
+    Input: FLAGxxxx.nc; APVanomxxxx; CLMPVmm.nc
+    Output: xxxx.csv: ID, Date [yyyymmdd_hh], com-Latitude [1-361], com-Longitude [1-721], Size [m^2], Strength [PVU], VAPV-Strength [PVU],
+            with com = center of mass
+                      
+    """
+    
+    ##### functions ######
+    # great circle distance
+    def dist(lon1,lat1,lon2,lat2):
+        re=6371.    # mean earth radius
+        erg=np.sin(np.deg2rad(lat1))*np.sin(np.deg2rad(lat2))+np.cos(np.deg2rad(lat1))*np.cos(np.deg2rad(lat2))*np.cos(np.deg2rad(lon1-lon2))
+        if (erg < -1.): erg=-1.
+        if (erg > 1.): erg=1.
+        distkm=re*np.arccos(erg)
+        return distkm  
+    bsas = [-0.27, 51.28]
+    paris = [49.0083899664, 2.53844117956]
+    
+    test = dist(-0.27, 51.28,-73.46,40.38)
+        
+    ##### End Functions ####
+    
+    # =====
+    #import modules
+    import numpy as np
+    from datetime import datetime, timedelta
+    import netCDF4 as nc
+    
+    # =====
+    # define path
+    inpath = outpath = '/net/litho/atmosdyn/steidani/cesm112_LENS/'
+    
+    # define climate
+    #climate = "b.e112.B20TRLENS.f09_g16.ethz." #ensemble members 001 to 035
+    climate = "b.e112.BRCP85LENS.f09_g16.ethz." #ensemble members 001 to 035
+    
+    #define parameters
+    ens_member = [str(item).zfill(3) for item in range(1, 3)]
+    #years = range(1990,2001) #present
+    years = range(2091,2101) #present
+    
+    # =====
+    # here loop through ens members
+    
+    # Define the grid and constants
+    a = 6378137.0 # equatorial radius in m
+    e = 0.00669437999014 # eccentricity squared       
+    #resol
+    stepsperday = 4 # for 12 hourly data use 2, for 6 hourly data use 4, for 1 hourly data us 24
+    dx = 1.25   # taken from inputfile
+    dy = 0.94240837696335078 # taken from inputfile
+    #grid
+    lon = np.arange(0,360,dx)
+    lat = np.arange(-90,90.5,dy)
+    nx = len(lon)
+    ny = len(lat)
+    lons, lats = np.meshgrid(lon, lat) #for flagbuffer  
+    #initiate array for length of grids in km
+    latlen = np.zeros(ny)    
+    lonlen = np.zeros(ny)  
+    phi = np.zeros(ny)  
+    
+
+    # =====
+    # Calculate the length of a degree of latitude (latlen) and longitude (lonlen) in meters
+    # First we need to convert the latitudes to radians :phi = np.deg2rad(lat)
+    # Use the cosine of the converted latitudes as weights for the average: weights = np.cos(phi)
+    for k in range(0,ny):
+        #print(lat[k])
+        phi[k] = (abs(lat[k])*np.pi/180) # definiton of the latitude in radian : same function is  np.deg2rad(lat) !!!but here only pos value!!!
+        latlen[k]=111132.954-559.822*np.cos(2*phi[k])+1.175*np.cos(4*phi[k]) # length of a latitude degree in m
+        lonlen[k]=(np.pi*a*np.cos(phi[k]))/(180*(1-e*np.sin(phi[k])**2)**(1/2)) # length of a longitude degree in m
+    
+    #What is the resolution?:
+    latlen*=dy
+    lonlen*=dx
+      
+    # ======    
+    #loop through ensembe members
+    for kk in ens_member:
+        print('####### ensemble member ' +  kk + ' #######: ')
+        # =====
+        # loop through years
+        for yy in years: 
+            print('#### year %d ####' % yy)
+                  
+            #initialize wanted variables!!!!!!
+            block_id = []
+            time = []
+            apv_intensity = []
+            vapv_intensity = []
+            size = []
+            com_lon = []
+            com_lat = []
+              
+            # =====        
+            # Read variable "VAPV" = vertically averaged PV
+            infile = inpath + climate + kk + '/vapv/' + 'VAPV_' + str(yy) + '.nc'
+            with nc.Dataset(infile) as ncf:
+                #print(ncf)
+                vapv = ncf.variables['VAPV'][:] #Vertically (500-150hPa) ??? not same temporal length as flagin becasue of 5 day persistent
+                timevapv = ncf.variables['time'][:] #  days since refdate
+                times_units = ncf.variables['time'].units #  days since refdate
+                
+            # Read variable "FLAG" = blocking mask
+            infile = inpath + climate + kk + '/block/' + 'BLOCKS' + str(yy) + '.nc'
+            with nc.Dataset(infile) as ncf:
+                #print(ncf)
+                flagin = ncf.variables['FLAG'][:]
+                #flagbuffer = ncf.variables['FLAG'][:]
+                # convert hour to datetime
+                timein = ncf.variables['time'][:] #  days since refdate
+                date = [nc.num2date(xx,units = times_units, calendar="noleap") for xx in timein]
+                       
+            # Read variable "VAPVanom" = vertically averaged PV Anomaly
+            infile = inpath + climate + kk + '/anom/' + 'Vanom' + str(yy)
+            with nc.Dataset(infile) as ncf:
+                #print(ncf)
+                anomin = ncf.variables['VAPVanom'][:] #Vertically (500-150hPa) averaged PV anomaly   ??? not same temporal length as flagin becasue of 5 day persistent
+                timeanom = ncf.variables['time'][:] #  days since refdate
+            
+            
+            # =====
+            # Define -999 as NA (nan) values
+            # ??? check with np.min()
+            vapv[np.where(vapv==-999.99)] = np.nan
+            
+            # =====
+            # cut anomaly and vapv file so that same length as flagin. They are longer (more timesteps) than Block-File because 5 day persistence, thus we need to cut 5*stepsperday at start and 5*stepsperday at end
+            anomsteps = len(anomin)   
+            start = (5*stepsperday)
+            end = anomsteps-5*stepsperday
+            anomin = anomin[start:end,:,:]    
+            timeanom = timeanom[start:end]
+            if (yy == years[0]):# here we only added 5 days after
+                vapv = vapv[(5*stepsperday):,:,:] 
+                timevapv = timevapv[(5*stepsperday):]
+            if (yy == years[-1]): # here we only added 5 days before
+                vapv = vapv[:1440,:,:] 
+                timevapv = timevapv[:1440]
+    
+            
+            # check if all input files have now same length: time must be identical for all inputs
+            if len(anomin) == len(flagin) == len(vapv):
+                print("inputs all have same length: continue")
+            else:
+                print("inputs have NOT same length: stopp")
+                break 
+            
+            # there is no redundant 721th row (where -180° = 180°) in CESM: DONT NEED TO DO THIS
+            #flagin = np.delete(flagin, (-1), axis=2); anomin = np.delete(anomin, (-1), axis=2); 
+            
+            # =====
+            timesteps = len(flagin)              
+            for ii in range(0,timesteps): # XX should be startdate of blocking: newtime ii=0 ii=XX
+                print(ii, 'from', timesteps)
+                
+                # =====
+                # current time step
+                currentstep = nc.num2date(timein[ii],units = times_units, calendar="noleap")
+                currentstep = currentstep.strftime('%Y%m%d_%H') #current date as string (human readable)
+                
+                # =====
+                # get Flag ID's and remove zero
+                idunique = np.unique(flagin[ii]) # if needed convert to int with .astype(int)
+                idunique = idunique[idunique != 0] #remove zero
+                lenid = len(idunique)
+                
+                #check if block in this timestep
+                if lenid == 0:
+                    print('No Block in this timestep...go to next timestep!')
+                    # jump back to for -->  continues with the next iteration of the loop
+                    continue
+                
+                # =====
+                # loop through IDs in this time step and calculation of area, PV-strength, center of mass and VAPV-strength per ID    
+                for bid in idunique:          
+                    print('Block ID:', bid)
+                    
+                    # =====
+                    # get index of grids that are blocked
+                    index = np.where(flagin[ii]==bid)            
+                    loni = index[1] # index of blocked lons lon[loni]
+                    lati = index[0] # index of blocked lats lat[lati]
+                                
+                    #initialize   
+                    idydir = lati # index of blocked latitudes
+                    idxdir = np.empty(len(loni)) * np.nan # index of blocked longitudes (they are maybe shifted if block is split over prime meridian)
+                    idarea = [] #in m2
+                    idstrength = [] #strength of the anomaly
+                    idvapv = [] #strength of the vapv 
+                    
+                    # ===== 
+                    #Calculate Area, PVanom = intensity and VAPV normalized with blocking area
+                    
+                    #loop through lat where block is located and calculate Area, PVanom and VAPV for each blocked grid: PVanom and VAPV are multiplied by grid size
+                    for jj in range(0,len(lati)):
+                        idarea.append(latlen[lati[jj]]*lonlen[lati[jj]]) # grid size in m2
+                        idstrength.append(latlen[lati[jj]]*lonlen[lati[jj]]*anomin[ii,lati[jj],loni[jj]]) #strength of the anomaly*grid !!! so that northerly grids are less weighted !!!
+                        idvapv.append(latlen[lati[jj]]*lonlen[lati[jj]]*vapv[ii,lati[jj],loni[jj]]) #vapv*grid !!! so that northerly grids are less weighted !!!
+                    
+                    # get the sum PVanom and VAPV over blocking region          
+                    idareasum = np.sum(idarea)
+                    idstrengthsum = np.sum(idstrength)
+                    idvapvsum = np.sum(idvapv)
+                    
+                    # normalize PVanom and VAPV with area of blocking region
+                    idstrengthperarea = idstrengthsum/idareasum # Area weighted APV-Strenght
+                    idvapvperarea = idvapvsum/idareasum # Area weighted climatological VAPV
+                    
+                    # =====
+                    # get center of mass:  adjuct problem if block extends over Prime meridian = block is splitted
+                    
+                    # prepare 
+                    ulatis = np.unique(lati) # unique latitudes where grids are blocked
+                    shift_status = 0 # check if block over prime meridian = is splitted
+                    # prepare array with lon that need to be shifted
+                    lon_shift = np.empty(len(ulatis)) * np.nan
+                    
+                    # Run through all blocked latitudes and get blocked longitudes 
+                    temp_loni = []
+                    for jj in ulatis:
+                        numbers = np.where(lati==jj) #get index of current blocked latitude
+                        temp_loni.extend(loni[numbers]) # get blocked longitudes of current blocked latitude
+                    
+                    # find largest zonal distance between blocked grids 
+                    temp_loni = np.sort(np.unique(temp_loni))
+                    if len(temp_loni) > 1:
+                        id_diff = np.max(np.diff(temp_loni))
+                    else:
+                        id_diff = 0
+                    
+                    # check if difference between blocking regions is larger as the world_diff
+                    world_diff=(nx)-np.max(temp_loni) + np.min(temp_loni)
+                    if world_diff < id_diff:
+                        shift_status = 1
+                        # find most western grid of blocked longitudes (western flank of block)
+                        lon_shift = temp_loni[np.where(np.diff(temp_loni) == np.max(np.diff(temp_loni)))[0] + 1]
+                        if len(lon_shift) > 1:
+                            print("IT HAPPEND")
+                            lon_shift = lon_shift[1]
+                    
+                    # go through each latitude and shift if needed (shift_status = 0) to get inxdir = index of blocked longitudes
+                    for jj in ulatis:
+                        numbers = np.where(lati==jj) #get index of current blocked latitude
+                        longitudes = loni[numbers] #get blocked longitude of current blocked latitude
+                        if shift_status == 1:  # Do shift, only if shift status is larger than 0 and if current latitude contains longitudes smaller than lon.shift
+                            if (len(longitudes) == 1) and (longitudes < lon_shift): # If only one longitude at this latitude
+                                idxdir[numbers] = longitudes + nx
+                                continue #jump back to for
+                            shift_these = np.where(longitudes<lon_shift) # these longitudes need to be shifted at current latitude
+                            longitudes[shift_these] = longitudes[shift_these] + nx # shifting
+                            idxdir[numbers] = longitudes # assigning idxdir
+                            del shift_these
+                        else: # Do not shift if difference around the world is larger than between IDs, or if current latitude does not contain longitudes smaller than lon_shift
+                            idxdir[numbers] = longitudes      
+                    # idxdir is now the index for the blocked longitudes after shift
+                            
+    
+                    # get now index of blocked lon and lat that are weighted with PVanom
+                    idsumx = np.sum(idstrength*idxdir)
+                    idsumy = np.sum(idstrength*idydir) 
+    
+                    # if after shift com_x is > 720: !!! meaning it crossed the date line !!!
+                    if np.round(np.int(idsumx/idstrengthsum)) < nx:
+                        idmeanx = lon[np.round(np.int(idsumx/idstrengthsum))]# X-center of mass in °E
+                    else:
+                        x = np.round(np.int(idsumx/idstrengthsum)) - nx
+                        idmeanx = lon[x]
+    
+                    idmeany = lat[np.round(np.int(idsumy/idstrengthsum))] # Y-center of mass
+    
+                    
+                    # Getting Flag ID's, timestamp, com-lon, com-lat, size, vapv-strength, mean vapv
+                    block_id.append(bid)
+                    time.append(currentstep)                
+                    apv_intensity.append(idstrengthperarea)
+                    vapv_intensity.append(idvapvperarea)
+                    size.append(idareasum)
+                    com_lon.append(idmeanx)
+                    com_lat.append(idmeany)
+    
+            #list to array
+            block_id = np.asarray(block_id)
+            time = np.asarray(time)
+            apv_intensity = np.asarray(apv_intensity)
+            vapv_intensity = np.asarray(vapv_intensity)
+            size = np.asarray(size)
+            com_lon = np.asarray(com_lon)
+            com_lat = np.asarray(com_lat)
+            
+            print('Writing to File:')        
+            # Writing to
+            with open(outpath + climate + kk + '/data/' + 'block_lifecycle_' + str(yy) +'.txt', "w") as f:
+                #write here header
+                f.write('{:>5}  {:>11}  {:>7}  {:>7}  {:>16}  {:>8}  {:>8}'.format('ID','Date','lon','lat','size[m2]','apv[pvu]','vapv[pvu]'))
+                f.write("\n")
+                f.write('---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n')
+                line = np.column_stack((block_id, time, com_lon.astype(np.object), com_lat.astype(np.object), size, apv_intensity, vapv_intensity))               
+                f.write("\n".join('{:>5}  {:>11}  {:>7.2f}  {:>7.2f}  {:>16.2f}  {:>8.3f}  {:>8.3f}'.format(*x) for x in line))
+        
+
+
+
+
+
+
 
 def calc_anom(self, 
                   variable="",

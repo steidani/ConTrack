@@ -7,10 +7,11 @@ Created on Sun Mar 29 17:12:55 2020
 
 
 TO DO
-    - calculate clim: take precalculated era5 clim
+    - calculate clim: take precalculated era5 clim: see xarray.toturial to store data on github
         - use dask for out of memory problem
     - smooth anomaly field with 2 day running mean
-    - era5 clim store on github (see xarray.toturial) to be used to calculate anom
+    - cal anom an clim: option to choose timewindow: time.dayofyear, month, season...
+
 """
 
 # =======
@@ -492,7 +493,8 @@ class contrack(object):
     def calc_anom(self, 
                   variable,
                   window=31,
-                  clim=""
+                  smooth=1,
+                  clim=None
     ):
         """
         Creates a new variable with name "anom" from variable.
@@ -504,8 +506,12 @@ class contrack(object):
                 Input variable.
             window : int, optional
                 number of timesteps for climatological running mean
+            smooth : int, optional
+                number of timesteps for smoothing anomaly field 
             clim : string, optional
-                Path + Name of the file containing the climatology dataset. Regrid to resolution of variable.
+                If None: Calculate (long-term) climatological mean from input variable with running window.
+                Can be either string (path + dataname) or xarray.dataset containing the climatology. 
+                Regrid to resolution of variable.
 
         Returns
         -------
@@ -531,34 +537,42 @@ class contrack(object):
             self.set_up()
         
         # step 1: calculate clim
-        if not clim:
-            logger.info('Calculating Climatology from {}...'.format(variable)
+        if clim is None:
+            logger.info('Calculating climatological mean from {}...'.format(variable)
                         )
-            clim = self.calc_clim(variable=variable, window=window)  
+            clim_mean = self.calc_clim(variable=variable, window=window)  
+            clim = 'from {} with running window time steps {}'.format(variable,window)
         else:
-            logger.info('Reading Climatology from {}...'.format(clim)
+            logger.info('Reading climatological mean from {}...'.format(clim)
                         )
-            clim = xr.open_dataset(clim)
+            # if string, load data
+            if isinstance(clim, str): 
+                clim_mean = xr.open_dataset(clim)
+            else: # clim is xarray dataset
+                clim_mean = clim
             
             # check time dimension
-            if 'dayofyear' not in clim.dims:
-                clim = clim.groupby(self._time_name + '.dayofyear')
+            if 'dayofyear' not in clim_mean.dims:
+                clim_mean = clim_mean.groupby(self._time_name + '.dayofyear')
             
-            # regrid        - asume dimensions have same name
-            clim = clim.reindex({self._latitude_name:self.ds[self._latitude_name], self._longitude_name:self.ds[self._longitude_name]}, method='nearest')
+            # regrid        - dimensions in clim must have same name as in input variable
+            clim_mean = clim_mean.reindex({self._latitude_name:self.ds[self._latitude_name], self._longitude_name:self.ds[self._longitude_name]}, method='nearest')
                
         # step 2: calculate and create new variable anomaly     
         self.ds['anom'] = xr.Variable(
             self.ds[variable].dims,
-            self.ds[variable].groupby(self._time_name + '.dayofyear') - clim,
+            (self.ds[variable].groupby(self._time_name + '.dayofyear') - clim_mean).rolling(time=smooth, center=True).mean(),
             attrs={
                 'units': self.ds[variable].attrs['units'],
                 'long_name': self.ds[variable].attrs['long_name'] + ' Anomaly',
                 'standard_name': self.ds[variable].attrs['long_name'] + ' anomaly',
-                'history': 'Calculated from {}.'.format(variable)}
+                'history': ' '.join([
+                    'Calculated from {} with input attributes:',
+                    'smoothing time steps = {},',
+                    'climatology = {}.'])
+                    .format(variable, smooth, clim)}
         )
         logger.info('Calculating Anomaly... DONE')
-            
             
     def run_contrack(self,
                   variable,
@@ -636,14 +650,14 @@ class contrack(object):
             errmsg = ' Please select from [>, >=, <, >=] for gorl'
             raise ValueError(errmsg)
         
-        # step 2: identify individual contours
+        # step 2: identify individual contours (only along x and y)
         flag, num_features = ndimage.label(flag.data, structure= np.array([[[0, 0, 0], [0,0,0], [0,0,0]],
                                                                           [[1, 1, 1], [1,1,1], [1,1,1]],
                                                                           [[0, 0, 0], [0,0,0], [0,0,0]]])
-                                          )
+                                          ) # comment: can lead to memory error... better to loop over each time step?  
         # periodic boundry: allow contours to cross date border
-        for tt in range(flag.shape[0]):
-            for y in range(flag.shape[1]):
+        for tt in range(len(self.ds[self._time_name])):
+            for y in range(len(self.ds[self._latitude_name])):
                 if flag[tt, y, 0] > 0 and flag[tt, y, -1] > 0:
                     flag[tt][flag[tt] == flag[tt, y, -1]] = flag[tt, y, 0]
                           
@@ -654,7 +668,7 @@ class contrack(object):
         weight_lat = np.cos(self.ds[self._latitude_name].data*np.pi/180)
         weight_grid = np.ones((self.ds.dims[self._latitude_name], self.ds.dims[self._longitude_name])) * np.array((111 * self._dlat * 111 * self._dlon * weight_lat)).astype(np.float32)[:, None]
 
-        for tt in range(1,flag.shape[0]-1): 
+        for tt in range(1,len(self.ds[self._time_name])-1): 
             # loop over individual contours
             slices = ndimage.find_objects(flag[tt])
             label = 0
@@ -695,13 +709,14 @@ class contrack(object):
         logger.info("Apply persistence...")
         flag, num_features = ndimage.label(flag, structure = np.array([[[0, 0, 0], [0,1,0], [0,0,0]],
                                                                       [[1, 1, 1], [1,1,1], [1,1,1]],
-                                                                      [[0, 0, 0], [0,1,0], [0,0,0]]]))
+                                                                      [[0, 0, 0], [0,1,0], [0,0,0]]])
+                                           ) # comment: can lead to memory error...
         # periodic boundry: allow features to cross date border
-        for tt in range(flag.shape[0]):
-            for y in range(flag.shape[1]):
+        for tt in range(len(self.ds[self._time_name])):
+            for y in range(len(self.ds[self._latitude_name])):
                 if flag[tt, y, 0] > 0 and flag[tt, y, -1] > 0:
                     flag[tt][flag[tt] == flag[tt, y, -1]] = flag[tt, y, 0]
-        
+        # check for persistance, remove features with lifetime < persistance
         label = 0
         for slice_ in ndimage.find_objects(flag):
             label = label+1
@@ -712,7 +727,7 @@ class contrack(object):
                 flag[slice_][(flag[slice_] == label)] = 0.        
         
         # step 5: create new variable flag
-        num_features = len(np.unique(flag))        
+
         logger.info("Create new variable 'flag'...")
         self.ds['flag'] = xr.Variable(
             self.ds[variable].dims,
@@ -731,9 +746,122 @@ class contrack(object):
                 'reference': 'https://github.com/steidani/ConTrack'}
         )
         
+        num_features = len(np.unique(flag)) - 1  # don't count 0
         logger.info("Running contrack... DONE\n"
                     "{} contours tracked".format(num_features)
                     )
+        
+    
+    def run_lifecycle(self,
+                  flag,
+                  variable
+                  
+    ):
+        """
+        Life cycle analysis: Tracking of intensity, spatial extent and center of mass of each flag.
+        
+        Parameters
+        ----------
+            variable : string
+                input variable to calculate intensity.
+            flag : string
+                input variable with flags, output of run_contrack()
+
+        Returns
+        -------
+            array: float
+                tracking of individual systems
+        """
+
+        logger.info(
+            "\nRun Lifecycle \n"
+            "########### \n"
+            "    variable:    {}\n".format(
+                variable)
+        )  
+        
+        # define constants and functions
+        a = 6378137.0 # equatorial radius in m
+        e = 0.00669437999014 # eccentricity squared
+        weight_lat = np.cos(self.ds[self._latitude_name].data*np.pi/180)
+        weight_grid = np.ones((self.ds.dims[self._latitude_name], self.ds.dims[self._longitude_name])) * np.array((111 * self._dlat * 111 * self._dlon * weight_lat)).astype(np.float32)[:, None]
+
+        # define output
+        #initialize wanted variables!!!!!!
+        block_id = []
+        time = []
+        intensity = []
+        size = []
+        com_lon = []
+        com_lat = []
+        
+        
+        for tt in range(1,len(self.ds[self._time_name])-1): 
+            # loop over individual contours
+            currentstep = self.ds[self._time_name][tt].dt.strftime('%Y%m%d_%H').values
+            slices = ndimage.find_objects(self.ds[flag].data[tt])
+            label = 0
+            for slice_ in slices:
+                label = label+1
+                if slice_ is None:
+                    #no feature with this flag
+                    continue
+                
+                areacon = np.sum(weight_grid[slice_][self.ds[flag].data[tt][slice_] == label])
+                intensitycon = np.sum(weight_grid[slice_][self.ds[flag].data[tt][slice_] == label] * self.ds[variable].data[tt][slice_][self.ds[flag].data[tt][slice_] == label])
+                intensitycon = intensitycon/areacon
+                center_of_mass = ndimage.center_of_mass(self.ds[variable].data[tt], self.ds[flag].data[tt], [label])
+                
+                # here read index in center_of_mass from lat lon grid
+                
+                block_id.append(label)
+                time.append(str(currentstep))                
+                intensity.append(round(intensitycon,2))
+                size.append(round(areacon,2))
+                
+        return zip(time,block_id,intensity,size)
+
+# ----------------------------------------------------------------------------
+# utility functions
+
+    def greatcircle_dist(self,
+                         lon1,
+                         lat1,
+                         lon2,
+                         lat2):
+        """
+        Compute the great circle distance between location 1 and 2.
+
+        Parameters
+        ----------
+        lon1 : int
+            longitude (in degrees E) of location 1.
+        lat1 : int
+            latitutde (in degrees N) of location 1.
+        lon2 : int
+            longitude (in degrees E) of location 2.
+        lat2 : int
+            latitutde (in degrees N) of location 2.
+
+        Returns
+        -------
+        distkm : int
+            great circle distance in kilometers between two locations.
+            
+        Examples
+        --------
+        
+        >>> London = [-0.27, 51.28]
+        >>> NewYork = [-73.46, 40.38]     
+        >>> distkm = greatcircle_dist(London[0],London[1],NewYork[0],NewYork[1]) # 5555km
+
+        """
+        re=6371.    # mean earth radius
+        erg=np.sin(np.deg2rad(lat1))*np.sin(np.deg2rad(lat2))+np.cos(np.deg2rad(lat1))*np.cos(np.deg2rad(lat2))*np.cos(np.deg2rad(lon1-lon2))
+        if (erg < -1.): erg=-1.
+        if (erg > 1.): erg=1.
+        distkm=re*np.arccos(erg)
+        return distkm        
     
 
     # def fullname(self):
