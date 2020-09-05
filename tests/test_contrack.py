@@ -33,8 +33,6 @@ import time
 try:
     import matplotlib.pyplot as plt
     import cartopy.crs as ccrs
-except:
-    logger.warning("Matplotlib and/or Caropy is not installed in your python environment. Xarray Dataset plotting functions will not work.")
 
 #%%
 # =======
@@ -483,25 +481,25 @@ block.read('data/era5_2016_z_500.nc')
 # block.read('data/VAPVA2016_lowres')
 
 # clean data
-# Step 1: remove leap day
-block.ds = block.ds.sel(time=~((block.ds.time.dt.month == 2) & (block.ds.time.dt.day == 29)))
 
-# Step 2: daily mean
+
+# Step 1: clean data
+
+# daily mean
 block.ds = block.ds.resample(time='1D', keep_attrs=True).mean(keep_attrs=True)
-
 # select only wanted month
-block.ds = block.ds.sel(time=block.ds.time.dt.month.isin([1, 2, 12]))
-
-block.ds = block.ds.chunk({'time': 365, 'longitude': 10})
-
-block.z = block.z.chunk({'time': 365, 'longitude': 10})
+#block.ds = block.ds.sel(time=block.ds.time.dt.month.isin([1, 2, 12]))
+# remove leap day
+#block.ds = block.ds.sel(time=~((block.ds.time.dt.month == 2) & (block.ds.time.dt.day == 29)))
+# chunk
+#block.ds = block.ds.chunk({'time': 365, 'longitude': 10})
+#block.z = block.z.chunk({'time': 365, 'longitude': 10})
 
 # calculate geopotential height
 block.calculate_gph_from_gp()
 
-block.z_height.chunks
-block.ds = block.ds.chunk({'time': None})
-
+#block.z_height.chunks
+#block.ds = block.ds.chunk({'time': None})
 # block.ds = block.ds.drop_vars('z_height')
 
 # calculate clim
@@ -513,7 +511,7 @@ clim_mean = clim.z_mean
 # calculate z500 anomaly
 block.calc_anom('z_height', window=31, smooth=2)
 block.calc_anom('z_height', window=31, clim='data/era5_1981_2010_z_clim.nc')
-block.calc_anom('z_height', window=31, clim=clim_mean)
+block.calc_anom('z_height', window=31, smooth=2, clim=clim_mean)
 # block.ds.to_netcdf('data/anom_1981_2010.nc')
 
 
@@ -522,24 +520,34 @@ block.run_contrack(variable='anom',
                   threshold=150,
                   gorl='>=',
                   overlap=0.5,
-                  persistence=5,
+                  persistence=3,
                   twosided=False)
 
 test = block.run_lifecycle(flag='flag', variable='anom')
 
-block.flag.to_netcdf('data/test.nc')
-test = xr.open_dataset('data/test.nc')
+#block.flag.to_netcdf('data/test.nc')
+#test = xr.open_dataset('data/test.nc')
 
 # plot z500 anomaly on 2 Sep 2019 (Hurricane Dorian)
 ax = plt.axes(projection=ccrs.PlateCarree())
-block['anom'].sel(time='2016-10-08').plot(ax=ax, transform=ccrs.PlateCarree())
-block['flag'].sel(time='2016-10-08').plot.contour(ax=ax, transform=ccrs.PlateCarree())
-ax.set_extent([-120, 60, 30, 90], crs=ccrs.PlateCarree())
+block['anom'].sel(time='2016-05-01').plot(ax=ax, transform=ccrs.PlateCarree(),levels = np.arange(-310,311,10))
+block['flag'].sel(time='2016-05-01').plot.contour(ax=ax, transform=ccrs.PlateCarree())
+#ax.set_extent([-120, 60, 30, 90], crs=ccrs.PlateCarree())
 ax.coastlines()
+ax.plot(test[368][4],test[368][5],markersize=5, marker='o', color='magenta',transform=ccrs.PlateCarree())
+ax.plot(test[369][4],test[369][5],markersize=5, marker='o', color='magenta',transform=ccrs.PlateCarree())
+ax.plot(test[370][4],test[370][5],markersize=5, marker='o', color='magenta',transform=ccrs.PlateCarree())
+ax.plot(test[371][4],test[371][5],markersize=5, marker='o', color='magenta',transform=ccrs.PlateCarree())
+
+plt.contourf(block['flag'].sel(time='2016-05-01').data)
+plt.contourf(test['flag'].sel(time='2016-05-01').data)
+plt.plot(130,12,markersize=5, marker='o', color='red')
+
+
 
 # plot z500 anomaly on 29 Jan 2019 (US Cold Spell)
-start_date = datetime.date(2016, 10, 1)
-end_date = datetime.date(2016, 10, 5)
+start_date = datetime.date(2016, 4, 27)
+end_date = datetime.date(2016, 5, 7)
 
 ii = start_date
 while ii <= end_date:

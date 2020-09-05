@@ -786,6 +786,9 @@ class contrack(object):
         weight_lat = np.cos(self.ds[self._latitude_name].data*np.pi/180)
         weight_grid = np.ones((self.ds.dims[self._latitude_name], self.ds.dims[self._longitude_name])) * np.array((111 * self._dlat * 111 * self._dlon * weight_lat)).astype(np.float32)[:, None]
 
+        #define grid
+                
+
         # define output
         #initialize wanted variables!!!!!!
         block_id = []
@@ -797,8 +800,10 @@ class contrack(object):
         
         
         for tt in range(1,len(self.ds[self._time_name])-1): 
-            # loop over individual contours
+            
             currentstep = self.ds[self._time_name][tt].dt.strftime('%Y%m%d_%H').values
+            
+            # loop over individual contours
             slices = ndimage.find_objects(self.ds[flag].data[tt])
             label = 0
             for slice_ in slices:
@@ -807,19 +812,27 @@ class contrack(object):
                     #no feature with this flag
                     continue
                 
-                areacon = np.sum(weight_grid[slice_][self.ds[flag].data[tt][slice_] == label])
-                intensitycon = np.sum(weight_grid[slice_][self.ds[flag].data[tt][slice_] == label] * self.ds[variable].data[tt][slice_][self.ds[flag].data[tt][slice_] == label])
+                #areacon = np.sum(weight_grid[slice_][self.ds[flag].data[tt][slice_] == label])
+                areacon = np.sum(weight_grid[self.ds[flag].data[tt] == label])
+                intensitycon = np.sum(weight_grid[self.ds[flag].data[tt] == label] * self.ds[variable].data[tt][self.ds[flag].data[tt] == label])
                 intensitycon = intensitycon/areacon
+                
+                
                 center_of_mass = ndimage.center_of_mass(self.ds[variable].data[tt], self.ds[flag].data[tt], [label])
+                # problem with periodic boundary --> object split
+                # solution: roll entire dataset and find lat lon
                 
-                # here read index in center_of_mass from lat lon grid
-                
+                # append to output list
                 block_id.append(label)
                 time.append(str(currentstep))                
                 intensity.append(round(intensitycon,2))
                 size.append(round(areacon,2))
-                
-        return zip(time,block_id,intensity,size)
+                #com_lat.append(round(center_of_mass[0]))
+                #com_lon.append(round(center_of_mass[0]))
+                com_lat.append(int(self.ds[self._latitude_name][int(center_of_mass[0][0])].data))
+                com_lon.append(int(self.ds[self._longitude_name][int(center_of_mass[0][1])].data))
+                           
+        return list(zip(time,block_id,intensity,size,com_lon,com_lat))
 
 # ----------------------------------------------------------------------------
 # utility functions
