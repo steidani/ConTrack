@@ -817,20 +817,33 @@ class contrack(object):
                 intensitycon = np.sum(weight_grid[self.ds[flag].data[tt] == label] * self.ds[variable].data[tt][self.ds[flag].data[tt] == label])
                 intensitycon = intensitycon/areacon
                 
+                # center of mass
                 
-                center_of_mass = ndimage.center_of_mass(self.ds[variable].data[tt], self.ds[flag].data[tt], [label])
-                # problem with periodic boundary --> object split
-                # solution: roll entire dataset and find lat lon
-                
+                # periodic boundary: roll field if flag is split at boundary
+                if label in self.ds[flag].data[tt,:,0] and label in self.ds[flag].data[tt,:,-1]:
+                    # find western edge of flag
+                    yloc, xloc = np.where(self.ds[flag].data[tt] == label)
+                    lon_roll = np.unique(xloc)[np.argmax(np.diff(np.unique(xloc)))+1]
+                    flag_roll = self.ds[flag].isel(time=tt).roll(longitude=lon_roll,roll_coords=True)
+                    variable_roll = self.ds[variable].isel(time=tt).roll(longitude=lon_roll,roll_coords=True)
+                    center_of_mass = ndimage.center_of_mass(variable_roll.data*weight_grid, flag_roll.data, [label])
+                    
+                    com_lat.append(int(flag_roll[self._latitude_name][int(center_of_mass[0][0])].data))
+                    com_lon.append(int(flag_roll[self._longitude_name][int(center_of_mass[0][1])].data))
+                    
+                else:
+                    center_of_mass = ndimage.center_of_mass(self.ds[variable].data[tt]*weight_grid, self.ds[flag].data[tt], [label])
+                    com_lat.append(int(self.ds[self._latitude_name][int(center_of_mass[0][0])].data))
+                    com_lon.append(int(self.ds[self._longitude_name][int(center_of_mass[0][1])].data))
+
+                             
                 # append to output list
                 block_id.append(label)
                 time.append(str(currentstep))                
                 intensity.append(round(intensitycon,2))
                 size.append(round(areacon,2))
-                #com_lat.append(round(center_of_mass[0]))
-                #com_lon.append(round(center_of_mass[0]))
-                com_lat.append(int(self.ds[self._latitude_name][int(center_of_mass[0][0])].data))
-                com_lon.append(int(self.ds[self._longitude_name][int(center_of_mass[0][1])].data))
+                #com_lat.append(int(self.ds[self._latitude_name][int(center_of_mass[0][0])].data))
+                #com_lon.append(int(self.ds[self._longitude_name][int(center_of_mass[0][1])].data))
                            
         return list(zip(time,block_id,intensity,size,com_lon,com_lat))
 

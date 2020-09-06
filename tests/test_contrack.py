@@ -33,6 +33,8 @@ import time
 try:
     import matplotlib.pyplot as plt
     import cartopy.crs as ccrs
+except:
+    print('not installed')
 
 #%%
 # =======
@@ -530,14 +532,15 @@ test = block.run_lifecycle(flag='flag', variable='anom')
 
 # plot z500 anomaly on 2 Sep 2019 (Hurricane Dorian)
 ax = plt.axes(projection=ccrs.PlateCarree())
-block['anom'].sel(time='2016-05-01').plot(ax=ax, transform=ccrs.PlateCarree(),levels = np.arange(-310,311,10))
-block['flag'].sel(time='2016-05-01').plot.contour(ax=ax, transform=ccrs.PlateCarree())
+block['anom'].sel(time='2016-05-01').plot(ax=ax, transform=ccrs.PlateCarree())
+block['flag'].sel(time='2016-05-01').plot.contour(ax=ax, linewidths= 0.5, transform=ccrs.PlateCarree(), colors='gray')
 #ax.set_extent([-120, 60, 30, 90], crs=ccrs.PlateCarree())
 ax.coastlines()
-ax.plot(test[368][4],test[368][5],markersize=5, marker='o', color='magenta',transform=ccrs.PlateCarree())
-ax.plot(test[369][4],test[369][5],markersize=5, marker='o', color='magenta',transform=ccrs.PlateCarree())
-ax.plot(test[370][4],test[370][5],markersize=5, marker='o', color='magenta',transform=ccrs.PlateCarree())
-ax.plot(test[371][4],test[371][5],markersize=5, marker='o', color='magenta',transform=ccrs.PlateCarree())
+ax.plot(test[368][4],test[368][5],markersize=5, marker='x', color='magenta',transform=ccrs.PlateCarree())
+ax.plot(test[369][4],test[369][5],markersize=5, marker='x', color='magenta',transform=ccrs.PlateCarree())
+ax.plot(test[370][4],test[370][5],markersize=5, marker='x', color='magenta',transform=ccrs.PlateCarree())
+ax.plot(test[371][4],test[371][5],markersize=5, marker='x', color='magenta',transform=ccrs.PlateCarree())
+plt.savefig('data/fig/example_com.png', dpi=150)
 
 plt.contourf(block['flag'].sel(time='2016-05-01').data)
 plt.contourf(test['flag'].sel(time='2016-05-01').data)
