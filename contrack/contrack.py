@@ -758,7 +758,7 @@ class contrack(object):
                   
     ):
         """
-        Life cycle analysis: Tracking of intensity, spatial extent and center of mass of each flag.
+        Life cycle analysis: Tracking of intensity, spatial extent and center of mass of each flagged contour.
         
         Parameters
         ----------
@@ -771,7 +771,7 @@ class contrack(object):
         Returns
         -------
             list: float
-                tracking of individual systems
+                tracking of characteristics for each flagged contour
                 [date, flag, intensity, spatial extent, com_lon, com_lat]
         """
 
