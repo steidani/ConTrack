@@ -540,13 +540,25 @@ ax.plot(test[368][4],test[368][5],markersize=5, marker='x', color='magenta',tran
 ax.plot(test[369][4],test[369][5],markersize=5, marker='x', color='magenta',transform=ccrs.PlateCarree())
 ax.plot(test[370][4],test[370][5],markersize=5, marker='x', color='magenta',transform=ccrs.PlateCarree())
 ax.plot(test[371][4],test[371][5],markersize=5, marker='x', color='magenta',transform=ccrs.PlateCarree())
-plt.savefig('data/fig/example_com.png', dpi=150)
+#plt.savefig('data/fig/example_com.png', dpi=150)
 
-plt.contourf(block['flag'].sel(time='2016-05-01').data)
-plt.contourf(test['flag'].sel(time='2016-05-01').data)
-plt.plot(130,12,markersize=5, marker='o', color='red')
+ax.plot(np.asfarray(test1[:,4][test1[:,1]=='15']),np.asfarray(test1[:,5][test1[:,1]=='15']),transform=ccrs.PlateCarree())
 
+plt.figure()
+plt.contour(flag_roll.data)
+plt.plot(139,10, marker='o')
 
+ax = plt.axes(projection=ccrs.NorthPolarStereo())
+ax.coastlines()
+ax.set_extent([-120, 60, 0, 90], crs=ccrs.PlateCarree())
+for ii in np.unique(test1[:,1]):
+    #ax.plot(np.asfarray(test1[:,4][test1[:,1]==ii])[0],np.asfarray(test1[:,5][test1[:,1]==ii])[0],marker='o', color='magenta',transform=ccrs.PlateCarree())
+    xloc = np.asfarray(test1[:,4][test1[:,1]==ii])
+    yloc = np.asfarray(test1[:,5][test1[:,1]==ii])
+    
+    xloc[xloc > 340] -= 360
+    
+    ax.plot(xloc,yloc,transform=ccrs.PlateCarree())
 
 # plot z500 anomaly on 29 Jan 2019 (US Cold Spell)
 start_date = datetime.date(2016, 4, 27)

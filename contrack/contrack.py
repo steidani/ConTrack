@@ -556,7 +556,7 @@ class contrack(object):
                 clim_mean = clim_mean.groupby(self._time_name + '.dayofyear')
             
             # regrid        - dimensions in clim must have same name as in input variable
-            clim_mean = clim_mean.reindex({self._latitude_name:self.ds[self._latitude_name], self._longitude_name:self.ds[self._longitude_name]}, method='nearest')
+            clim_mean = clim_mean.reindex(**{self._latitude_name:self.ds[self._latitude_name], self._longitude_name:self.ds[self._longitude_name]}, method='nearest')
                
         # step 2: calculate and create new variable anomaly     
         self.ds['anom'] = xr.Variable(
@@ -762,32 +762,30 @@ class contrack(object):
         
         Parameters
         ----------
-            variable : string
-                input variable to calculate intensity.
             flag : string
                 input variable with flags, output of run_contrack()
+            variable : string
+                input variable to calculate intensity and center of mass
+
 
         Returns
         -------
-            array: float
+            list: float
                 tracking of individual systems
+                [date, flag, intensity, spatial extent, com_lon, com_lat]
         """
 
         logger.info(
             "\nRun Lifecycle \n"
             "########### \n"
-            "    variable:    {}\n".format(
-                variable)
+            "    flag:    {}\n"
+            "    variable:    {}".format(
+                flag, variable)
         )  
         
-        # define constants and functions
-        a = 6378137.0 # equatorial radius in m
-        e = 0.00669437999014 # eccentricity squared
+        # define grid weight
         weight_lat = np.cos(self.ds[self._latitude_name].data*np.pi/180)
-        weight_grid = np.ones((self.ds.dims[self._latitude_name], self.ds.dims[self._longitude_name])) * np.array((111 * self._dlat * 111 * self._dlon * weight_lat)).astype(np.float32)[:, None]
-
-        #define grid
-                
+        weight_grid = np.ones((self.ds.dims[self._latitude_name], self.ds.dims[self._longitude_name])) * np.array((111 * self._dlat * 111 * self._dlon * weight_lat)).astype(np.float32)[:, None]               
 
         # define output
         #initialize wanted variables!!!!!!
@@ -797,44 +795,43 @@ class contrack(object):
         size = []
         com_lon = []
         com_lat = []
-        
-        
-        for tt in range(1,len(self.ds[self._time_name])-1): 
+   
+        # loop through time
+        for i_time in range(self.ds.dims[self._time_name]): 
             
-            currentstep = self.ds[self._time_name][tt].dt.strftime('%Y%m%d_%H').values
+            currentstep = self.ds[self._time_name].isel(**{self._time_name: i_time}).dt.strftime('%Y%m%d_%H').values
             
             # loop over individual contours
-            slices = ndimage.find_objects(self.ds[flag].data[tt])
-            label = 0
-            for slice_ in slices:
-                label = label+1
-                if slice_ is None:
-                    #no feature with this flag
-                    continue
+            labels = np.unique(self.ds[flag].isel(**{self._time_name: i_time}).data)
+            labels = labels[labels != 0]
+            if len(labels) == 0:
+                #no flag at this timestep
+                continue
+
+            for label in labels:
                 
-                #areacon = np.sum(weight_grid[slice_][self.ds[flag].data[tt][slice_] == label])
-                areacon = np.sum(weight_grid[self.ds[flag].data[tt] == label])
-                intensitycon = np.sum(weight_grid[self.ds[flag].data[tt] == label] * self.ds[variable].data[tt][self.ds[flag].data[tt] == label])
+                # calculate area and intensity
+                areacon = np.sum(weight_grid[self.ds[flag].isel(**{self._time_name: i_time}).data == label])
+                intensitycon = np.sum(weight_grid[self.ds[flag].isel(**{self._time_name: i_time}).data == label] * self.ds[variable].isel(**{self._time_name: i_time}).data[self.ds[flag].isel(**{self._time_name: i_time}).data == label])
                 intensitycon = intensitycon/areacon
                 
-                # center of mass
-                
+                # calculate center of mass
                 # periodic boundary: roll field if flag is split at boundary
-                if label in self.ds[flag].data[tt,:,0] and label in self.ds[flag].data[tt,:,-1]:
+                if label in self.ds[flag].isel(**{self._time_name: i_time, self._longitude_name:0}).data and label in self.ds[flag].isel(**{self._time_name: i_time, self._longitude_name:-1}).data:
                     # find western edge of flag
-                    yloc, xloc = np.where(self.ds[flag].data[tt] == label)
+                    yloc, xloc = np.where(self.ds[flag].isel(**{self._time_name: i_time}).data == label)
                     lon_roll = np.unique(xloc)[np.argmax(np.diff(np.unique(xloc)))+1]
-                    flag_roll = self.ds[flag].isel(time=tt).roll(longitude=lon_roll,roll_coords=True)
-                    variable_roll = self.ds[variable].isel(time=tt).roll(longitude=lon_roll,roll_coords=True)
+                    flag_roll = self.ds[flag].isel(**{self._time_name: i_time}).roll(longitude=(-1) * lon_roll,roll_coords=True)
+                    variable_roll = self.ds[variable].isel(**{self._time_name: i_time}).roll(longitude=(-1) *lon_roll,roll_coords=True)
                     center_of_mass = ndimage.center_of_mass(variable_roll.data*weight_grid, flag_roll.data, [label])
                     
-                    com_lat.append(int(flag_roll[self._latitude_name][int(center_of_mass[0][0])].data))
-                    com_lon.append(int(flag_roll[self._longitude_name][int(center_of_mass[0][1])].data))
+                    comlatcon = int(flag_roll[self._latitude_name][int(center_of_mass[0][0])].data)
+                    comloncon = int(flag_roll[self._longitude_name][int(center_of_mass[0][1])].data)
                     
                 else:
-                    center_of_mass = ndimage.center_of_mass(self.ds[variable].data[tt]*weight_grid, self.ds[flag].data[tt], [label])
-                    com_lat.append(int(self.ds[self._latitude_name][int(center_of_mass[0][0])].data))
-                    com_lon.append(int(self.ds[self._longitude_name][int(center_of_mass[0][1])].data))
+                    center_of_mass = ndimage.center_of_mass(self.ds[variable].isel(**{self._time_name: i_time}).data*weight_grid, self.ds[flag].isel(**{self._time_name: i_time}).data, [label])
+                    comlatcon = int(self.ds[self._latitude_name][int(center_of_mass[0][0])].data)
+                    comloncon = int(self.ds[self._longitude_name][int(center_of_mass[0][1])].data)
 
                              
                 # append to output list
@@ -842,10 +839,11 @@ class contrack(object):
                 time.append(str(currentstep))                
                 intensity.append(round(intensitycon,2))
                 size.append(round(areacon,2))
-                #com_lat.append(int(self.ds[self._latitude_name][int(center_of_mass[0][0])].data))
-                #com_lon.append(int(self.ds[self._longitude_name][int(center_of_mass[0][1])].data))
+                com_lon.append(comloncon)
+                com_lat.append(comlatcon)
+
                            
-        return list(zip(time,block_id,intensity,size,com_lon,com_lat))
+        return sorted(list(zip(time,block_id,intensity,size,com_lon,com_lat)), key=lambda x: (x[1], x[0])) 
 
 # ----------------------------------------------------------------------------
 # utility functions
