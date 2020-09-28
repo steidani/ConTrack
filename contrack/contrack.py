@@ -11,6 +11,7 @@ TO DO
         - use dask for out of memory problem
     - smooth anomaly field with 2 day running mean
     - cal anom an clim: option to choose timewindow: time.dayofyear, month, season...
+    - calc PV anom: change sign for SH
 
 """
 
@@ -21,6 +22,7 @@ TO DO
 import numpy as np
 import xarray as xr
 from scipy import ndimage
+import pandas as pd
 from numpy.core import datetime64
 
 # logs
@@ -363,7 +365,7 @@ class contrack(object):
                 logmsg = ' '.join(['force=True: using mean of non-equidistant',
                                    'grid {}'.format(delta)])
                 logging.warning(logmsg)
-                delta = [round(delta.mean(), 2)]
+                delta = round(delta.mean(), 2)
             else:
                 if dim == self._time_name:
                     logging.warning(errmsg)
@@ -458,7 +460,8 @@ class contrack(object):
     
     def calc_clim(self, 
                   variable, 
-                  window=31
+                  window=31,
+                  groupby='dayofyear'
     ):
         """
         Calculate daily (long-term) climatology, smoothed with a rolling average.
@@ -470,6 +473,7 @@ class contrack(object):
                 Input variable.
             window : int, optional
                 number of timesteps to for climatological running mean
+            groupby : string
 
         Returns
         -------
@@ -479,12 +483,12 @@ class contrack(object):
         """
         
         # step 1: long-term daily mean
-        clim = self[variable].groupby(self._time_name + '.dayofyear').mean(self._time_name)
+        clim = self[variable].groupby(self._time_name + '.' + groupby).mean(self._time_name)
         #clim = clim.chunk({'dayofyear': None})
         
         # step 2: running mean ( with periodic boundary)
         clim = clim.rolling(dayofyear=window, center=True).mean().fillna(
-            clim[-window:].mean(dim='dayofyear')    
+            clim[-window:].mean(dim=groupby)    
         )
         
         return clim
@@ -494,6 +498,7 @@ class contrack(object):
                   variable,
                   window=31,
                   smooth=1,
+                  groupby='dayofyear',
                   clim=None
     ):
         """
@@ -512,6 +517,8 @@ class contrack(object):
                 If None: Calculate (long-term) climatological mean from input variable with running window.
                 Can be either string (path + dataname) or xarray.dataset containing the climatology. 
                 Regrid to resolution of variable.
+            groupby : string
+                
 
         Returns
         -------
@@ -540,7 +547,7 @@ class contrack(object):
         if clim is None:
             logger.info('Calculating climatological mean from {}...'.format(variable)
                         )
-            clim_mean = self.calc_clim(variable=variable, window=window)  
+            clim_mean = self.calc_clim(variable=variable, window=window, groupby=groupby)  
             clim = 'from {} with running window time steps {}'.format(variable,window)
         else:
             logger.info('Reading climatological mean from {}...'.format(clim)
@@ -552,16 +559,16 @@ class contrack(object):
                 clim_mean = clim
             
             # check time dimension
-            if 'dayofyear' not in clim_mean.dims:
-                clim_mean = clim_mean.groupby(self._time_name + '.dayofyear')
+            if groupby not in clim_mean.dims:
+                clim_mean = clim_mean.groupby(self._time_name + '.' + groupby)
             
-            # regrid        - dimensions in clim must have same name as in input variable
+            # regrid        - grid dimensions in clim must have same name as in input variable
             clim_mean = clim_mean.reindex(**{self._latitude_name:self.ds[self._latitude_name], self._longitude_name:self.ds[self._longitude_name]}, method='nearest')
                
         # step 2: calculate and create new variable anomaly     
         self.ds['anom'] = xr.Variable(
             self.ds[variable].dims,
-            (self.ds[variable].groupby(self._time_name + '.dayofyear') - clim_mean).rolling(time=smooth, center=True).mean(),
+            (self.ds[variable].groupby(self._time_name + '.' + groupby) - clim_mean).rolling(time=smooth, center=True).mean(), # [variable] at end if error because of frozen dimensions
             attrs={
                 'units': self.ds[variable].attrs['units'],
                 'long_name': self.ds[variable].attrs['long_name'] + ' Anomaly',
@@ -636,7 +643,7 @@ class contrack(object):
             self.set_up()
         
         
-        # step 1: find contours (greater or less than threshold)
+        # step 1: define closed contours (greater or less than threshold)
         logger.info("Find individual contours...")
         if gorl == '>=' or gorl == 'ge':
             flag = xr.where(self.ds[variable] >= threshold, 1, 0)
@@ -656,27 +663,33 @@ class contrack(object):
                                                                           [[0, 0, 0], [0,0,0], [0,0,0]]])
                                           ) # comment: can lead to memory error... better to loop over each time step?  
         # periodic boundry: allow contours to cross date border
+        # comment: what if dimension index not (time,lat,lon)? --> self.ds[variable].dims.index(self._latitude_name)
         for tt in range(len(self.ds[self._time_name])):
-            for y in range(len(self.ds[self._latitude_name])):
-                if flag[tt, y, 0] > 0 and flag[tt, y, -1] > 0:
-                    flag[tt][flag[tt] == flag[tt, y, -1]] = flag[tt, y, 0]
-                          
-                    
+            for yy in range(len(self.ds[self._latitude_name])):
+                if flag[tt, yy, 0] > 0 and flag[tt, yy, -1] > 0 and (flag[tt, yy, 0] > flag[tt, yy, -1]):
+                    # downstream
+                    flag[tt][flag[tt] == flag[tt, yy, 0]] = flag[tt, yy, -1]
+                if flag[tt, yy, 0] > 0 and flag[tt, yy, -1] > 0 and (flag[tt, yy, 0] < flag[tt, yy, -1]):
+                    # upstream
+                    flag[tt][flag[tt] == flag[tt, yy, -1]] = flag[tt, yy, 0]         
+            
         #step 3: overlapping
         logger.info("Apply overlap...")
  
         weight_lat = np.cos(self.ds[self._latitude_name].data*np.pi/180)
         weight_grid = np.ones((self.ds.dims[self._latitude_name], self.ds.dims[self._longitude_name])) * np.array((111 * self._dlat * 111 * self._dlon * weight_lat)).astype(np.float32)[:, None]
 
-        for tt in range(1,len(self.ds[self._time_name])-1): 
+        for tt in range(1,len(self.ds[self._time_name])-1):  
             # loop over individual contours
             slices = ndimage.find_objects(flag[tt])
             label = 0
             for slice_ in slices:
                 label = label+1
                 if slice_ is None:
-                    #no feature with this flag
+                    #no feature with this flag/label
                     continue
+                
+                # calculate values
                 areacon = np.sum(weight_grid[slice_][flag[tt][slice_] == label])
                 areaover_forward = np.sum(weight_grid[slice_][(flag[tt][slice_] == label) & (flag[tt+1][slice_] >= 1)])
                 areaover_backward = np.sum(weight_grid[slice_][(flag[tt][slice_] == label) & (flag[tt-1][slice_] >= 1)])
@@ -707,15 +720,23 @@ class contrack(object):
         # step 4: persistency
         # find features along time axis
         logger.info("Apply persistence...")
+        flag = xr.where(flag >= 1, 1, 0)
         flag, num_features = ndimage.label(flag, structure = np.array([[[0, 0, 0], [0,1,0], [0,0,0]],
                                                                       [[1, 1, 1], [1,1,1], [1,1,1]],
                                                                       [[0, 0, 0], [0,1,0], [0,0,0]]])
                                            ) # comment: can lead to memory error...
         # periodic boundry: allow features to cross date border
+        slices = ndimage.find_objects(flag)
         for tt in range(len(self.ds[self._time_name])):
-            for y in range(len(self.ds[self._latitude_name])):
-                if flag[tt, y, 0] > 0 and flag[tt, y, -1] > 0:
-                    flag[tt][flag[tt] == flag[tt, y, -1]] = flag[tt, y, 0]
+            for yy in range(len(self.ds[self._latitude_name])):
+                if flag[tt, yy, 0] > 0 and flag[tt, yy, -1] > 0 and (flag[tt, yy, 0] > flag[tt, yy, -1]):
+                    # downstream
+                    slice_ = slices[flag[tt, yy, 0]-1]
+                    flag[slice_][(flag[slice_] == flag[tt, yy, 0])] = flag[tt, yy, -1]
+                if flag[tt, yy, 0] > 0 and flag[tt, yy, -1] > 0 and (flag[tt, yy, 0] < flag[tt, yy, -1]):
+                    # upstream
+                    slice_ = slices[flag[tt, yy, 0]-1]
+                    flag[slice_][(flag[slice_] == flag[tt, yy, -1])] = flag[tt, yy, 0]
         # check for persistance, remove features with lifetime < persistance
         label = 0
         for slice_ in ndimage.find_objects(flag):
@@ -727,7 +748,6 @@ class contrack(object):
                 flag[slice_][(flag[slice_] == label)] = 0.        
         
         # step 5: create new variable flag
-
         logger.info("Create new variable 'flag'...")
         self.ds['flag'] = xr.Variable(
             self.ds[variable].dims,
@@ -750,7 +770,7 @@ class contrack(object):
         logger.info("Running contrack... DONE\n"
                     "{} contours tracked".format(num_features)
                     )
-        
+ 
     
     def run_lifecycle(self,
                   flag,
@@ -770,9 +790,9 @@ class contrack(object):
 
         Returns
         -------
-            list: float
+            pandas dataframe: DataFrame
                 tracking of characteristics for each flagged contour
-                [date, flag, intensity, spatial extent, com_lon, com_lat]
+                ['Flag','Date [YYYMMDD_HH]','Longitude [°E]','Latitude [°N]','Intensity [unit from variable]','Size [km2]']
         """
 
         logger.info(
@@ -782,6 +802,22 @@ class contrack(object):
             "    variable:    {}".format(
                 flag, variable)
         )  
+        
+        # Set up dimensions
+        logger.info("Set up dimensions...")
+        if hasattr(self, '_time_name'):
+            # print names       
+            logger.info(
+                "\n time: '{}'\n"
+                " longitude: '{}'\n"
+                " latitude: '{}'\n".format(
+                self._time_name, 
+                self._longitude_name,
+                self._latitude_name)
+            )
+            pass
+        else:
+            self.set_up()
         
         # define grid weight
         weight_lat = np.cos(self.ds[self._latitude_name].data*np.pi/180)
@@ -821,8 +857,8 @@ class contrack(object):
                     # find western edge of flag
                     yloc, xloc = np.where(self.ds[flag].isel(**{self._time_name: i_time}).data == label)
                     lon_roll = np.unique(xloc)[np.argmax(np.diff(np.unique(xloc)))+1]
-                    flag_roll = self.ds[flag].isel(**{self._time_name: i_time}).roll(longitude=(-1) * lon_roll,roll_coords=True)
-                    variable_roll = self.ds[variable].isel(**{self._time_name: i_time}).roll(longitude=(-1) *lon_roll,roll_coords=True)
+                    flag_roll = self.ds[flag].isel(**{self._time_name: i_time}).roll(**{self._longitude_name:(-1) * lon_roll},roll_coords=True)
+                    variable_roll = self.ds[variable].isel(**{self._time_name: i_time}).roll(**{self._longitude_name:(-1) * lon_roll},roll_coords=True)
                     center_of_mass = ndimage.center_of_mass(variable_roll.data*weight_grid, flag_roll.data, [label])
                     
                     comlatcon = int(flag_roll[self._latitude_name][int(center_of_mass[0][0])].data)
@@ -841,9 +877,10 @@ class contrack(object):
                 size.append(round(areacon,2))
                 com_lon.append(comloncon)
                 com_lat.append(comlatcon)
-
+                
+    
                            
-        return sorted(list(zip(time,block_id,intensity,size,com_lon,com_lat)), key=lambda x: (x[1], x[0])) 
+        return pd.DataFrame(sorted(list(zip(block_id,time,com_lon,com_lat,intensity,size)), key=lambda x: (x[0], x[1])) , columns=['Flag','Date','Longitude','Latitude','Intensity','Size'])
 
 # ----------------------------------------------------------------------------
 # utility functions

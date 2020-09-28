@@ -285,33 +285,54 @@ ax = plt.axes(projection=ccrs.PlateCarree())
 block['z_height'].mean(dim='time').plot.contour()
 ax.set_global(); ax.coastlines();
 
+
+
+
+
+
 # STEP 3: individual contours
+
+# flag
+block.ds['flag'] = xr.where(block.ds['VAPVanom'] <= -1.3, 1, 0)
+
 # A) using ndimage
 from scipy import ndimage
 
 # loop over each time step
 structure = np.ones((3,) * 2)
+structure= np.array([[[0, 0, 0], [0,0,0], [0,0,0]],
+                   [[1, 1, 1], [1,1,1], [1,1,1]],
+                   [[0, 0, 0], [0,0,0], [0,0,0]]])
 arr = []
-for tt in range(0,ds_era['test'].data.shape[0]):
-    print(tt)
-    labeled_array, num_features = ndimage.label(ds_era['test'].data[tt])
+for tt in range(0,block['flag'].data.shape[0]):
+    #print(tt)
+    labeled_array, num_features = ndimage.label(block['flag'].data[tt],structure=structure)
     # periodic boundry
     for y in range(labeled_array.shape[0]):
-        if labeled_array[y, 0] > 0 and labeled_array[y, -1] > 0:
-            labeled_array[labeled_array == labeled_array[y, -1]] = labeled_array[y, 0]
+        if labeled_array[y, 0] > 0 and labeled_array[y, -1] > 0 and labeled_array[y, 0] > labeled_array[y, -1]:
+            labeled_array[labeled_array == labeled_array[y, 0]] = labeled_array[y, -1]
+        if labeled_array[y, 0] > 0 and labeled_array[y, -1] > 0 and labeled_array[y, 0] < labeled_array[y, -1]:
+            labeled_array[labeled_array == labeled_array[y, -1]] = labeled_array[y, -0]
     arr.append(labeled_array)
 arr = np.asarray(arr).squeeze()  
 
 # do it over all timesteps
 # structure = np.ones((3,) * 3) # diagonal along all axis
 structure = np.array([[[0, 0, 0], [0,0,0], [0,0,0]],[[1, 1, 1], [1,1,1], [1,1,1]],[[0, 0, 0], [0,0,0], [0,0,0]]]) # overlap along time axis, diagonal along lat lon
-arr, num_features = ndimage.label(ds_era['test'].data, structure=structure)
+arr, num_features = ndimage.label(block['flag'].data, structure=structure)
 # periodic boundry: allow features to cross date border
 for tt in range(arr.shape[0]):
     for y in range(arr.shape[1]):
-        if arr[tt, y, 0] > 0 and arr[tt, y, -1] > 0:
+        #if arr[tt, y, 0] > 0 and arr[tt, y, -1] > 0:
+        #    arr[tt][arr[tt] == arr[tt, y, -1]] = arr[tt, y, 0]
+        if arr[tt, y, 0] > 0 and arr[tt, y, -1] > 0 and (arr[tt, y, 0] > arr[tt, y, -1]):
+            # downstream
+            arr[tt][arr[tt] == arr[tt, y, 0]] = arr[tt, y, -1]
+        if arr[tt, y, 0] > 0 and arr[tt, y, -1] > 0 and (arr[tt, y, 0] < arr[tt, y, -1]):
+            # upstream
             arr[tt][arr[tt] == arr[tt, y, -1]] = arr[tt, y, 0]
 
+                
 
 len(np.unique(arr))
 for tt in range(0,11):
@@ -410,12 +431,22 @@ print("--- %s seconds ---" % (time.time() - start_time))
 # do it over all timesteps
 # structure = np.ones((3,) * 3) # diagonal along all axis
 structure = np.array([[[0, 0, 0], [0,1,0], [0,0,0]],[[1, 1, 1], [1,1,1], [1,1,1]],[[0, 0, 0], [0,1,0], [0,0,0]]]) # overlap along time axis, diagonal along lat lon
-arr2, num_features = ndimage.label(arr, structure = structure)
+arr, num_features = ndimage.label(arr, structure = structure)
+
+slices = ndimage.find_objects(arr)
 # periodic boundry: allow features to cross date border
-for tt in range(arr2.shape[0]):
-    for y in range(arr2.shape[1]):
-        if arr2[tt, y, 0] > 0 and arr2[tt, y, -1] > 0:
-            arr2[tt][arr2[tt] == arr2[tt, y, -1]] = arr2[tt, y, 0]
+for tt in range(arr.shape[0]):
+    for y in range(arr.shape[1]):
+        #if arr[tt, y, 0] > 0 and arr[tt, y, -1] > 0:
+        #    arr[tt][arr[tt] == arr[tt, y, -1]] = arr[tt, y, 0]
+        if arr[tt, y, 0] > 0 and arr[tt, y, -1] > 0 and (arr[tt, y, 0] > arr[tt, y, -1]):
+            # downstream
+            slice_ = slices[arr[tt, y, 0]-1]
+            arr[slice_][(arr[slice_] == arr[tt, y, 0])] = arr[tt, y, -1]
+        if arr[tt, y, 0] > 0 and arr[tt, y, -1] > 0 and (arr[tt, y, 0] < arr[tt, y, -1]):
+            slice_ = slices[arr[tt, y, 0]-1]
+            # upstream
+            arr[slice_][(arr[slice_] == arr[tt, y, -1])] = arr[tt, y, 0]
 
 len(np.unique(arr2))
 for tt in range(0,30):
@@ -479,8 +510,10 @@ from contrack import contrack
 # initiate blocking instance
 block = contrack()
 # read ERA5
-block.read('data/era5_2016_z_500.nc')
-# block.read('data/VAPVA2016_lowres')
+#block.read('data/era5_2016_z_500.nc')
+#block.read('data/VAPVA2016_lowres')
+block.read('data/cesm/VAPV_1990.nc')
+block.read('data/cesm/Vanom1990')
 
 # clean data
 
@@ -497,6 +530,9 @@ block.ds = block.ds.resample(time='1D', keep_attrs=True).mean(keep_attrs=True)
 #block.ds = block.ds.chunk({'time': 365, 'longitude': 10})
 #block.z = block.z.chunk({'time': 365, 'longitude': 10})
 
+# set up
+block.set_up(force=True)
+
 # calculate geopotential height
 block.calculate_gph_from_gp()
 
@@ -506,34 +542,43 @@ block.calculate_gph_from_gp()
 
 # calculate clim
 #clim = block.calc_clim('z')
-clim = xr.open_dataset('data/era5_1981_2010_z_clim.nc')
+clim = xr.open_dataset('data/cesm/VAPV_clim.nc')
+clim = clim.rename({'time': 'month'})
 clim_mean = clim.z_mean
 
 
 # calculate z500 anomaly
-block.calc_anom('z_height', window=31, smooth=2)
+block.calc_anom('VAPV', window=31, smooth=8)
 block.calc_anom('z_height', window=31, clim='data/era5_1981_2010_z_clim.nc')
-block.calc_anom('z_height', window=31, smooth=2, clim=clim_mean)
+block.calc_anom('VAPV', window=1, smooth=8, groupby='month', clim=clim.VAPV)
+
 # block.ds.to_netcdf('data/anom_1981_2010.nc')
 
+block = contrack()
+block.read('data/anom_1981_2010.nc')
 
 # calculate blocking
-block.run_contrack(variable='anom', 
-                  threshold=150,
-                  gorl='>=',
-                  overlap=0.5,
-                  persistence=3,
+block.run_contrack(variable='VAPVanom', 
+                  threshold=-1.3,
+                  gorl='<=',
+                  overlap=0.7,
+                  persistence=20,
                   twosided=False)
 
-test = block.run_lifecycle(flag='flag', variable='anom')
+#block = contrack()
+#block.read('data/cesm/BLOCKS1990.nc')
 
-#block.flag.to_netcdf('data/test.nc')
+test = block.run_lifecycle(flag='flag', variable='VAPVanom')
+
+#block.flag.to_netcdf('data/cesm/flag.nc')
 #test = xr.open_dataset('data/test.nc')
 
+test.to_csv('data/test.csv', index=False)
+
 # plot z500 anomaly on 2 Sep 2019 (Hurricane Dorian)
-ax = plt.axes(projection=ccrs.PlateCarree())
-block['anom'].sel(time='2016-05-01').plot(ax=ax, transform=ccrs.PlateCarree())
-block['flag'].sel(time='2016-05-01').plot.contour(ax=ax, linewidths= 0.5, transform=ccrs.PlateCarree(), colors='gray')
+ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=180))
+block['anom'].sel(time='1990-01-05T06:00:00')[0].plot(ax=ax, levels=np.arange(-3,3,.01),transform=ccrs.PlateCarree())
+block['flag'].sel(time='1990-01-01T06:00:00')[0].plot.contour(ax=ax, linewidths= 0.5, transform=ccrs.PlateCarree(), colors='gray')
 #ax.set_extent([-120, 60, 30, 90], crs=ccrs.PlateCarree())
 ax.coastlines()
 ax.plot(test[368][4],test[368][5],markersize=5, marker='x', color='magenta',transform=ccrs.PlateCarree())
@@ -542,36 +587,66 @@ ax.plot(test[370][4],test[370][5],markersize=5, marker='x', color='magenta',tran
 ax.plot(test[371][4],test[371][5],markersize=5, marker='x', color='magenta',transform=ccrs.PlateCarree())
 #plt.savefig('data/fig/example_com.png', dpi=150)
 
-ax.plot(np.asfarray(test1[:,4][test1[:,1]=='15']),np.asfarray(test1[:,5][test1[:,1]=='15']),transform=ccrs.PlateCarree())
 
-plt.figure()
-plt.contour(flag_roll.data)
-plt.plot(139,10, marker='o')
+# =======
+# PLOTTING Block Track
+f, ax = plt.subplots(1, 1, figsize=(7,5), subplot_kw=dict(projection=ccrs.NorthPolarStereo()))
 
-ax = plt.axes(projection=ccrs.NorthPolarStereo())
+# =======
+# add coastlines, 
 ax.coastlines()
-ax.set_extent([-120, 60, 0, 90], crs=ccrs.PlateCarree())
-for ii in np.unique(test1[:,1]):
-    #ax.plot(np.asfarray(test1[:,4][test1[:,1]==ii])[0],np.asfarray(test1[:,5][test1[:,1]==ii])[0],marker='o', color='magenta',transform=ccrs.PlateCarree())
-    xloc = np.asfarray(test1[:,4][test1[:,1]==ii])
-    yloc = np.asfarray(test1[:,5][test1[:,1]==ii])
+
+# ======= 
+# add gridlines and gridticks
+#ax.gridlines(color='black', alpha=0.2, linestyle='--', ylocs=np.arange(-90, 91, 30), xlocs=np.arange(-180, 181, 60))
+ax.set_extent([-180, 180, 30, 90], crs=ccrs.PlateCarree())
+      
+
+#need to split each blocking track due to longitude wrapping (jumping at basemap edge) 
+for bid in np.unique(np.asarray(test['Flag'])): #select blocking id in year yy and seas ii        
+    lons = np.asarray(test['Longitude'].iloc[np.where(test['Flag']==bid)])
+    lats = np.asarray(test['Latitude'].iloc[np.where(test['Flag']==bid)])
     
-    xloc[xloc > 340] -= 360
+    # cosmetic: sometimes there is a gap near dateline where split: 
+    lons[lons >= 355] = 359.9
+    lons[lons <= 3] = 0.1
+    segment = np.vstack((lons,lats))  
     
-    ax.plot(xloc,yloc,transform=ccrs.PlateCarree())
+    #move longitude into the map region and split if longitude jumps by more than "threshold"
+    lon0 = 0 #center of map
+    bleft = lon0-0.                                                                            
+    bright = lon0+360
+    segment[0,segment[0]> bright] -= 360                                                                 
+    segment[0,segment[0]< bleft]  += 360
+    threshold = 180  # CHANGE HERE                                                                                    
+    isplit = np.nonzero(np.abs(np.diff(segment[0])) > threshold)[0]                                                                                         
+    subsegs = np.split(segment,isplit+1,axis=+1)
+
+    
+    #plot the tracks
+    for seg in subsegs:                                                                                  
+        x,y = seg[0],seg[1]                                                                          
+        ax.plot(x ,y,c = 'm',linewidth=1, transform=ccrs.PlateCarree())  
+    #plot the starting points
+    ax.scatter(lons[0],lats[0],s=11,c='m', zorder=10, edgecolor='black', transform=ccrs.PlateCarree())  
+plt.savefig('data/fig/cesm_blocking_track.png', dpi=300)
+
 
 # plot z500 anomaly on 29 Jan 2019 (US Cold Spell)
-start_date = datetime.date(2016, 4, 27)
-end_date = datetime.date(2016, 5, 7)
+#start_date = datetime.date(1990, 1, 2, 00)
+start_date = datetime.datetime(1990, 1, 2, 6,0)
+end_date = datetime.datetime(1990, 2, 15, 6,0)
 
 ii = start_date
 while ii <= end_date:
-    ax = plt.axes(projection=ccrs.PlateCarree())
-    block['anom'].sel(time=ii).plot(ax=ax, transform=ccrs.PlateCarree())
-    block['flag'].sel(time=ii).plot.contour(ax=ax,transform=ccrs.PlateCarree())
+for ii in np.arange(1010,1040,1):
+    ax = plt.axes(projection=ccrs.NorthPolarStereo())
+    block['VAPVanom'].isel(time=ii).plot(ax=ax, transform=ccrs.PlateCarree(), levels=np.arange(-1.3,1.3,0.1))
+    block['flag'].isel(time=ii).plot.contour(ax=ax,transform=ccrs.PlateCarree())
     ax.coastlines()
+    ax.set_extent([-180, 180, 30, 90], crs=ccrs.PlateCarree())
     plt.show()
-    ii = ii+datetime.timedelta(1)
+    #ii = ii+datetime.timedelta(1)
     
 # plot frequency
 fig, ax = plt.subplots(figsize=(7, 5), subplot_kw={'projection': ccrs.NorthPolarStereo()})

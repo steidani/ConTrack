@@ -41,7 +41,7 @@ v0.1.0 (20.04.2020):
 - Extended functionality: Calculate anomalies from daily (long-term) climatology.
 - ``pip install contrack`` is currently not working -> cartopy dependency error
 
-future plans: 
+Update (28.09.2020): 
 --------------------
 - life cycle characteristics: temporal evolution of intensity, spatial extent, center of mass and age from genesis to lysis.
 - calculate anomalies based on pre-defined climatology.
@@ -122,3 +122,35 @@ Example: Calculate blocking climatology
 .. image:: docs/era5_blockingfreq_DJF.png
    :width: 20 px
    :align: center
+
+Example: Calculation of blocking characteristics 
+------------------------------------------------
+
+Using the output 'flag' of block.run_contrack() to calculate blocking intensity, size, center of mass, age from genesis to lysis.
+
+.. code-block:: python 
+
+   # flag = output of block.run_contrack(), variable = input variable to calculate intensity and center of mass
+   block_df = block.run_lifecycle(flag='flag', variable='anom')
+
+   print(block_df)
+	      Flag         Date  Longitude  Latitude  Intensity        Size
+	0       27  19900107_06        217        47      -1.30    19349.98
+	1       27  19900107_12        218        47      -1.32    77399.93
+	2       27  19900107_18        187        49      -1.41   842595.86
+	3       27  19900108_00        188        50      -1.46  1956661.48
+	4       27  19900108_06        190        51      -1.50  2783328.97
+	   ...          ...        ...       ...        ...         ...
+	2260   905  19901230_18          8        60      -1.50  1811341.28
+	2261   905  19901231_00         12        59      -1.46  1611724.10
+	2262   905  19901231_06         15        58      -1.42  1540671.99
+	2263   905  19901231_12         16        58      -1.39  1339705.77
+	2264   905  19901231_18         17        57      -1.37  1031896.73
+
+   # plotting blocking track (center of mass) and genesis 
+
+.. image:: docs/cesm_blocking_track.png
+   :width: 20 px
+   :align: center
+
+
