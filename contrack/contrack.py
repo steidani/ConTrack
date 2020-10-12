@@ -392,7 +392,7 @@ class contrack(object):
                               gph_name='z_height'
     ):
         """
-        Creates a new variable with name gph_name from the variable gp_name
+        Creates a new variable geopotential height with name gph_name from the variable gp_name
         by dividing it through the mean gravitational accelerating g=9.80665
         m s**-2.
         
@@ -430,7 +430,7 @@ class contrack(object):
     
     def calc_mean(self, variable):
         """
-        Calculate mean along time axis for variable
+        Calculate mean along time axis for variable.
 
         Parameters
         ----------
@@ -464,21 +464,21 @@ class contrack(object):
                   groupby='dayofyear'
     ):
         """
-        Calculate daily (long-term) climatology, smoothed with a rolling average.
-        If one year or less of data: calculate running mean.
+        Calculate climatological mean, grouped by groupby and smoothed with a rolling average.
 
         Parameters
         ----------
             variable : string
                 Input variable.
             window : int, optional
-                number of timesteps to for climatological running mean
+                number of timesteps for running mean. The default is 31.
             groupby : string
+                xarray “group by” operations. The default is dayofyear.
 
         Returns
         -------
             array:  float
-                daily (long-term) climatological mean with time dimension: dayofyear
+                climatological mean.
 
         """
         
@@ -510,20 +510,21 @@ class contrack(object):
             variable : string
                 Input variable.
             window : int, optional
-                number of timesteps for climatological running mean
+                number of timesteps for running mean. The default is 31.
             smooth : int, optional
-                number of timesteps for smoothing anomaly field 
+                number of timesteps for smoothing anomaly field. The default is 1.
             clim : string, optional
-                If None: Calculate (long-term) climatological mean from input variable with running window.
+                If None: Calculate (long-term) climatological mean from input variable with groupby operation and running window.
                 Can be either string (path + dataname) or xarray.dataset containing the climatology. 
-                Regrid to resolution of variable.
+                Will be regridded to resolution of input variable.
             groupby : string
+                xarray “group by” operations. The default is dayofyear.
                 
 
         Returns
         -------
-            array: float
-                Anomalie field
+            xarray.Dataset: float
+                An xarray Dataset object containing the anomalie field.
 
         """
         
@@ -611,8 +612,9 @@ class contrack(object):
 
         Returns
         -------
-            array: float
-                flag field
+            xarray.Dataset: float
+                An xarray Dataset object containing the flag field.
+                Each unique feature has a unique label/flag.
         
         """
     
@@ -662,6 +664,10 @@ class contrack(object):
                                                                           [[1, 1, 1], [1,1,1], [1,1,1]],
                                                                           [[0, 0, 0], [0,0,0], [0,0,0]]])
                                           ) # comment: can lead to memory error... better to loop over each time step?  
+        
+        # convert flag to xarray.DataArray
+        # flag = xr.DataArray(data=arr, dims=block['flag'].dims, coords=block['flag'].coords)
+        
         # periodic boundry: allow contours to cross date border
         # comment: what if dimension index not (time,lat,lon)? --> self.ds[variable].dims.index(self._latitude_name)
         for tt in range(len(self.ds[self._time_name])):
@@ -785,7 +791,7 @@ class contrack(object):
             flag : string
                 input variable with flags, output of run_contrack()
             variable : string
-                input variable to calculate intensity and center of mass
+                input variable used to calculate intensity and center of mass
 
 
         Returns
