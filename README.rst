@@ -96,7 +96,7 @@ Example: Calculate blocking climatology
    block.calculate_gph_from_gp(gp_name='z',
                                gp_unit='m**2 s**-2',
                                gph_name='z_height')
-
+   
    # calculate Z500 anomaly with respect to 31-day running mean (long-term) climatology, 
    block.calc_anom('z_height', window=31)
 
@@ -148,6 +148,37 @@ Using the output 'flag' of block.run_contrack() to calculate blocking intensity,
 	3836  6948  20101225_00          5       -55     211.33  7606108.76
 
    # plotting blocking track (center of mass) and genesis 
+   f, ax = plt.subplots(1, 1, figsize=(7,5), subplot_kw=dict(projection=ccrs.NorthPolarStereo()))
+   ax.set_extent([-180, 180, 30, 90], crs=ccrs.PlateCarree()); ax.coastlines()
+   ax.coastlines() # add coastlines
+      
+   #need to split each blocking track due to longitude wrapping (jumping at map edge) 
+   for bid in np.unique(np.asarray(test['Flag'])): #select blocking id in year yy and seas ii        
+       lons = np.asarray(test['Longitude'].iloc[np.where(test['Flag']==bid)])
+       lats = np.asarray(test['Latitude'].iloc[np.where(test['Flag']==bid)])
+    
+       # cosmetic: sometimes there is a gap near map edge where track is split: 
+       lons[lons >= 355] = 359.9
+       lons[lons <= 3] = 0.1
+       segment = np.vstack((lons,lats))  
+    
+       #move longitude into the map region and split if longitude jumps by more than "threshold"
+       lon0 = 0 #center of map
+       bleft = lon0-0.                                                                            
+       bright = lon0+360
+       segment[0,segment[0]> bright] -= 360                                                                 
+       segment[0,segment[0]< bleft]  += 360
+       threshold = 180  # CHANGE HERE                                                                                    
+       isplit = np.nonzero(np.abs(np.diff(segment[0])) > threshold)[0]                                                                                         
+       subsegs = np.split(segment,isplit+1,axis=+1)
+
+       #plot the tracks
+       for seg in subsegs:                                                                                  
+           x,y = seg[0],seg[1]                                                                          
+           ax.plot(x ,y,c = 'm',linewidth=1, transform=ccrs.PlateCarree())  
+       #plot the starting points
+       ax.scatter(lons[0],lats[0],s=11,c='m', zorder=10, edgecolor='black', transform=ccrs.PlateCarree())  
+
 
 .. image:: docs/cesm_blocking_track.png
    :width: 20 px

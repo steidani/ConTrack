@@ -214,8 +214,8 @@ class contrack(object):
     ):
         """
         Prepares the dataset for contour tracking. Does consistency checks
-        and tests if all required information is available. Sets internal
-        variables and dimensions.
+        and tests if all required information is available. Sets (automatically 
+        or manually) internal variables and dimensions.
 
         Parameters
         ----------
@@ -359,7 +359,8 @@ class contrack(object):
             ))
         # check resolution
         if len(delta) > 1:
-            errmsg = 'No regular grid found for dimension {}'.format(dim)
+            errmsg = 'No regular grid found for dimension {}.\n\
+            Hint: use set_up(force=True).'.format(dim)
             if force and dim != self._time_name:
                 logging.warning(errmsg)
                 logmsg = ' '.join(['force=True: using mean of non-equidistant',
@@ -659,17 +660,21 @@ class contrack(object):
             errmsg = ' Please select from [>, >=, <, >=] for gorl'
             raise ValueError(errmsg)
         
+        # set order of dimension to (time,lat,lon)      
+        dims = self.ds[variable].dims
+        sort = [dims.index(dim) for dim in [self._time_name,
+                                            self._latitude_name,
+                                            self._longitude_name]]
+        flag = flag.transpose(dims[sort[0]], dims[sort[1]], dims[sort[2]])
+        
         # step 2: identify individual contours (only along x and y)
         flag, num_features = ndimage.label(flag.data, structure= np.array([[[0, 0, 0], [0,0,0], [0,0,0]],
                                                                           [[1, 1, 1], [1,1,1], [1,1,1]],
                                                                           [[0, 0, 0], [0,0,0], [0,0,0]]])
                                           ) # comment: can lead to memory error... better to loop over each time step?  
-        
-        # convert flag to xarray.DataArray
-        # flag = xr.DataArray(data=arr, dims=block['flag'].dims, coords=block['flag'].coords)
-        
+            
         # periodic boundry: allow contours to cross date border
-        # comment: what if dimension index not (time,lat,lon)? --> self.ds[variable].dims.index(self._latitude_name)
+        # comment: what if dimension index not in order (time,lat,lon)? --> self.ds[variable].dims.index(self._latitude_name)
         for tt in range(len(self.ds[self._time_name])):
             for yy in range(len(self.ds[self._latitude_name])):
                 if flag[tt, yy, 0] > 0 and flag[tt, yy, -1] > 0 and (flag[tt, yy, 0] > flag[tt, yy, -1]):
@@ -757,7 +762,7 @@ class contrack(object):
         logger.info("Create new variable 'flag'...")
         self.ds['flag'] = xr.Variable(
             self.ds[variable].dims,
-            flag,
+            flag.transpose(sort),
             attrs={
                 'units': 'flag',
                 'long_name': 'contrack flag',
