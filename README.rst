@@ -151,11 +151,11 @@ Using the output 'flag' of block.run_contrack() to calculate blocking intensity,
    f, ax = plt.subplots(1, 1, figsize=(7,5), subplot_kw=dict(projection=ccrs.NorthPolarStereo()))
    ax.set_extent([-180, 180, 30, 90], crs=ccrs.PlateCarree()); ax.coastlines()
    ax.coastlines() # add coastlines
-      
+     
    #need to split each blocking track due to longitude wrapping (jumping at map edge) 
-   for bid in np.unique(np.asarray(test['Flag'])): #select blocking id    
-       lons = np.asarray(test['Longitude'].iloc[np.where(test['Flag']==bid)])
-       lats = np.asarray(test['Latitude'].iloc[np.where(test['Flag']==bid)])
+   for bid in np.unique(np.asarray(block_df['Flag'])): #select blocking id    
+       lons = np.asarray(block_df['Longitude'].iloc[np.where(block_df['Flag']==bid)])
+       lats = np.asarray(block_df['Latitude'].iloc[np.where(block_df['Flag']==bid)])
     
        # cosmetic: sometimes there is a gap near map edge where track is split: 
        lons[lons >= 355] = 359.9
