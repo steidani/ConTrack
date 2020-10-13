@@ -153,7 +153,7 @@ Using the output 'flag' of block.run_contrack() to calculate blocking intensity,
    ax.coastlines() # add coastlines
       
    #need to split each blocking track due to longitude wrapping (jumping at map edge) 
-   for bid in np.unique(np.asarray(test['Flag'])): #select blocking id in year yy and seas ii        
+   for bid in np.unique(np.asarray(test['Flag'])): #select blocking id    
        lons = np.asarray(test['Longitude'].iloc[np.where(test['Flag']==bid)])
        lats = np.asarray(test['Latitude'].iloc[np.where(test['Flag']==bid)])
     
