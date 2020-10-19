@@ -7,11 +7,7 @@ Created on Sun Mar 29 17:12:55 2020
 
 
 TO DO
-    - calculate clim: take precalculated era5 clim: see xarray.toturial to store data on github
-        - use dask for out of memory problem
-    - smooth anomaly field with 2 day running mean
-    - cal anom an clim: option to choose timewindow: time.dayofyear, month, season...
-    - calc PV anom: change sign for SH
+    - run_contrack(): take 90th percentile or std_dev from anom field for threshold
 
 """
 
@@ -516,7 +512,8 @@ class contrack(object):
                 number of timesteps for smoothing anomaly field. The default is 1.
             clim : string, optional
                 If None: Calculate (long-term) climatological mean from input variable with groupby operation and running window.
-                Can be either string (path + dataname) or xarray.dataset containing the climatology. 
+                If string: path + dataname. Will be opened with xr.open_dataarray() 
+                If xarray.DataArray: containing the climatology. 
                 Will be regridded to resolution of input variable.
             groupby : string
                 xarray “group by” operations. The default is dayofyear.
@@ -556,8 +553,8 @@ class contrack(object):
                         )
             # if string, load data
             if isinstance(clim, str): 
-                clim_mean = xr.open_dataset(clim)
-            else: # clim is xarray dataset
+                clim_mean = xr.open_dataarray(clim)
+            else: # clim is xarray.DataArray
                 clim_mean = clim
             
             # check time dimension

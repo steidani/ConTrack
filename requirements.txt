@@ -2,3 +2,4 @@ xarray
 scipy
 pandas
 numpy
+netCDF4

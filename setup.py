@@ -8,7 +8,7 @@ with open("README.rst", "r") as f:
 
 setup(
     name="ConTrack",
-    version="0.2.0",
+    version="0.2.1",
     description="Contour Tracking of circulation anomalies in Weather and Climate Data.",
     long_description=readme,
     long_description_content_type="text/x-rst",
@@ -22,7 +22,7 @@ setup(
         "Programming Language :: Python :: 3",
 	"License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
-	"Intended Audience :: Science/Research/Meteorology",
+	"Intended Audience :: Science/Research",
 	"Topic :: Scientific/Engineering :: Atmospheric Science",
     ],
     keywords=["data", "science", "meteorology", "climate", "atmospheric blocking", "troughs and ridges"]

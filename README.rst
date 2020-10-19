@@ -40,7 +40,7 @@ v0.1.0 (20.04.2020):
 
 - Extended functionality: Calculate anomalies from daily (long-term) climatology.
 
-v0.2.0 (19.10.2020): 
+v0.2.1 (19.10.2020): 
 --------------------
 - calculate anomalies based on pre-defined climatology.
 - better handling of dimensions using set_up() function.
