@@ -39,12 +39,14 @@ v0.1.0 (20.04.2020):
 --------------------
 
 - Extended functionality: Calculate anomalies from daily (long-term) climatology.
-- ``pip install contrack`` is currently not working -> cartopy dependency error
 
-Update (28.09.2020): 
+v0.2.0 (19.10.2020): 
 --------------------
-- life cycle characteristics: temporal evolution of intensity, spatial extent, center of mass and age from genesis to lysis.
 - calculate anomalies based on pre-defined climatology.
+- better handling of dimensions using set_up() function.
+- twosided or forward overlapping in run_contrack()
+- run_lifecycle(): temporal evolution of intensity, spatial extent, center of mass and age from genesis to lysis for individual features.
+
 
 ============
 Installation
@@ -58,6 +60,8 @@ Ideally install it in a virtual environment.
 .. code:: bash
 
     pip install contrack
+    
+Make sure you have the required dependencies (see docs/environment.yml).   
 
 Copy from Github repository
 ---------------------------
@@ -68,6 +72,8 @@ Copy/clone locally the latest version from ConTrack:
 
     git clone git@github.com:steidani/ConTrack.git /path/to/local/contrack
     cd path/to/local/contrack
+
+To run the test suite, install `pytest <https://pytest.org>`__ and run ``pytest``.
 
 ==========
 Tutorial

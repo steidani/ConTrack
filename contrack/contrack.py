@@ -461,7 +461,7 @@ class contrack(object):
     
     def calc_clim(self, 
                   variable, 
-                  window=31,
+                  window=1,
                   groupby='dayofyear'
     ):
         """
@@ -472,7 +472,7 @@ class contrack(object):
             variable : string
                 Input variable.
             window : int, optional
-                number of timesteps for running mean. The default is 31.
+                number of timesteps for running mean. The default is 1.
             groupby : string
                 xarray “group by” operations. The default is dayofyear.
 
@@ -497,7 +497,7 @@ class contrack(object):
     
     def calc_anom(self, 
                   variable,
-                  window=31,
+                  window=1,
                   smooth=1,
                   groupby='dayofyear',
                   clim=None
@@ -511,7 +511,7 @@ class contrack(object):
             variable : string
                 Input variable.
             window : int, optional
-                number of timesteps for running mean. The default is 31.
+                number of timesteps for running mean. The default is 1.
             smooth : int, optional
                 number of timesteps for smoothing anomaly field. The default is 1.
             clim : string, optional

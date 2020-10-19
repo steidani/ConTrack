@@ -1,4 +1,4 @@
 xarray
 scipy
+pandas
 numpy
-datetime
