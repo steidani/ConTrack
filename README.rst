@@ -117,17 +117,22 @@ Example: Calculate blocking climatology
                                gp_unit='m**2 s**-2',
                                gph_name='z_height')
    
-   # calculate Z500 anomaly with respect to 31-day running mean (long-term) climatology, 
-   block.calc_anom('z_height', window=31)
+   # calculate Z500 anomaly (emporally smoothed with a 2 d running mean) with respect to the 31-day running mean (long-term) climatology
+   block.calc_anom('z_height', 
+                   smooth=2,
+                   window=31,
+                   groupby='dayofyear')
+   # you can use 'clim=...' to point towards an existing climatological mean
+   # output: variable 'anom'.
 
    # Finally, track blocking anticyclones (>=150gmp, 50% overlap twosided, 5 days persistence)
-   block.run_contrack(variable='anom', 
-                      threshold=150,
-		      gorl='gt'
-                      overlap=0.5,
-                      persistence=5,
+   block.run_contrack(variable='anom',
+   		      threshold=150,
+		      gorl='>=',
+		      overlap=0.5,
+		      persistence=5,
 		      twosided=True)
-   #output: variable 'flag'. Each blocking system is identified by a unique flag/ID.
+   # output: variable 'flag'. Each blocking system is identified by a unique flag/ID.
 
    # plotting blocking frequency (in %) for winter over Northern Hemisphere
    import matplotlib.pyplot as plt
@@ -146,13 +151,14 @@ Example: Calculate blocking climatology
 Example: Calculation of blocking characteristics 
 ------------------------------------------------
 
-Using the output 'flag' of block.run_contrack() to calculate blocking intensity, size, center of mass, age from genesis to lysis.
+Using the output 'flag' from block.run_contrack() to calculate blocking intensity, size, center of mass, age from genesis to lysis for each tracked feature.
 
 .. code-block:: python 
 
    # flag = output of block.run_contrack(), variable = input variable to calculate intensity and center of mass
    block_df = block.run_lifecycle(flag='flag', variable='anom')
-
+   
+   # output is a pandas.DataFrame
    print(block_df)
 	      Flag         Date  Longitude  Latitude  Intensity        Size
 	0        3  19810101_00        333        48     226.45  6490603.17
@@ -167,6 +173,9 @@ Using the output 'flag' of block.run_contrack() to calculate blocking intensity,
 	3835  6948  20101224_00          3       -57     214.02  5141693.22
 	3836  6948  20101225_00          5       -55     211.33  7606108.76
 
+   # save result
+   block_df.to_csv('data/block.csv', index=False)
+   
    # plotting blocking track (center of mass) and genesis 
    f, ax = plt.subplots(1, 1, figsize=(7,5), subplot_kw=dict(projection=ccrs.NorthPolarStereo()))
    ax.set_extent([-180, 180, 30, 90], crs=ccrs.PlateCarree()); ax.coastlines()
