@@ -31,25 +31,6 @@ The ERA-Interim global blocking climatology based on upper-level potential vorti
 .. _xarray: https://xarray.pydata.org/en/stable/
 .. _scipy: https://www.scipy.org/
 
-==========
-What's New
-==========
-
-v0.2.0 (19.10.2020): 
---------------------
-
-- first release on pypi
-- calculate anomalies based on pre-defined climatology: ``calc_anom(clim=...)``.
-- better handling of dimensions using ``set_up()`` function.
-- twosided or forward overlap criterion: ``run_contrack(twosided=True)``.
-- ``run_lifecycle()``: temporal evolution of intensity, spatial extent, center of mass and age from genesis to lysis for individual features.
-
-v0.1.0 (20.04.2020): 
---------------------
-
-- Extended functionality: Calculate anomalies from daily or monthly or seasonal... (long-term) climatology with moving average window: ``calc_anom(groupby=..., window=...)``
-
-
 ============
 Installation
 ============
@@ -64,12 +45,13 @@ Ideally install it in a virtual environment.
     pip install contrack
     
 Make sure you have the required dependencies (for detail see docs/environment.yml):
- - xarray
- - scipy
- - pandas
- - numpy
- - netCDF4
- - (for plotting on geographical maps: matplotlib and cartopy)
+
+- xarray
+- scipy
+- pandas
+- numpy
+- netCDF4
+- (for plotting on geographical maps: matplotlib and cartopy)
  
 To install the development version (master), do:
 
@@ -222,4 +204,20 @@ Using the output 'flag' of block.run_contrack() to calculate blocking intensity,
    :width: 20 px
    :align: center
 
+==========
+What's New
+==========
 
+v0.2.0 (19.10.2020): 
+--------------------
+
+- first release on pypi
+- calculate anomalies based on pre-defined climatology: ``calc_anom(clim=...)``.
+- better handling of dimensions using ``set_up()`` function.
+- twosided or forward overlap criterion: ``run_contrack(twosided=True)``.
+- ``run_lifecycle()``: temporal evolution of intensity, spatial extent, center of mass and age from genesis to lysis for individual features.
+
+v0.1.0 (20.04.2020): 
+--------------------
+
+- Extended functionality: Calculate anomalies from daily or monthly or seasonal... (long-term) climatology with moving average window: ``calc_anom(groupby=..., window=...)``
