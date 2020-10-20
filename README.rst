@@ -10,9 +10,9 @@ ConTrack - Contour Tracking
 Spatial and temporal tracking of circulation anomalies in weather and climate data
 ==================================================================================
 
-ConTrack is a Python package intended to simpify the process of tracking and analyzing synoptic weather features (individual systems or long-term climatology) in weather and climate datasets. This feature-based tool is mostly used to track and characterize the life cycle of atmospheric blocking, but can also be used to identify other type of anomalous features, e.g., upper-level troughs and ridges (storm track). It is built on top of `xarray`_ and `scipy`_.
+ConTrack is a Python package intended to simpify the process of automatically tracking and analyzing synoptic weather features (individual systems or long-term climatology) in weather and climate datasets. This feature-based tool is mostly used to track and characterize the life cycle of atmospheric blocking, but can also be used to identify other type of anomalous features, e.g., upper-level troughs and ridges (storm track). It is built on top of `xarray`_ and `scipy`_.
 
-Based on the atmospheric blocking index by `Schwierz et al. (2004) <https://doi.org/10.1029/2003GL019341>`_ (written in Fortran) developed at the `Institute for Atmospheric and Climate Science, ETH Zurich <https://iac.ethz.ch/group/atmospheric-dynamics.html>`_.
+ConTrack is based on the atmospheric blocking index by `Schwierz et al. (2004) <https://doi.org/10.1029/2003GL019341>`_ (written in Fortran) developed at the `Institute for Atmospheric and Climate Science, ETH Zurich <https://iac.ethz.ch/group/atmospheric-dynamics.html>`_.
 
 See also:  
 
@@ -24,7 +24,7 @@ See also:
 - `Steinfeld et al. (2020) <https://wcd.copernicus.org/articles/1/405/2020/wcd-1-405-2020.html>`_
 - and used in many more atmospheric blocking studies...
 
-The ERA-Interim global blocking climatology used in Steinfeld and Pfahl (2019) is publicly available via an ETH Zurich-based web server [`http://eraiclim.ethz.ch/ <http://eraiclim.ethz.ch/>`_ , see `Sprenger et al. (2017) <https://doi.org/10.1175/BAMS-D-15-00299.1>`_].  
+The ERA-Interim global blocking climatology based on upper-level potential vorticity used in Steinfeld and Pfahl (2019) is publicly available via an ETH Zurich-based web server [`http://eraiclim.ethz.ch/ <http://eraiclim.ethz.ch/>`_ , see `Sprenger et al. (2017) <https://doi.org/10.1175/BAMS-D-15-00299.1>`_].  
 
 ..
   References
@@ -35,17 +35,19 @@ The ERA-Interim global blocking climatology used in Steinfeld and Pfahl (2019) i
 What's New
 ==========
 
+v0.2.0 (19.10.2020): 
+--------------------
+
+- first release on pypi
+- calculate anomalies based on pre-defined climatology: ``calc_anom(clim=...)``.
+- better handling of dimensions using ``set_up()`` function.
+- twosided or forward overlap criterion: ``run_contrack(twosided=True)``.
+- ``run_lifecycle()``: temporal evolution of intensity, spatial extent, center of mass and age from genesis to lysis for individual features.
+
 v0.1.0 (20.04.2020): 
 --------------------
 
-- Extended functionality: Calculate anomalies from daily (long-term) climatology.
-
-v0.2.1 (19.10.2020): 
---------------------
-- calculate anomalies based on pre-defined climatology.
-- better handling of dimensions using set_up() function.
-- twosided or forward overlapping in run_contrack()
-- run_lifecycle(): temporal evolution of intensity, spatial extent, center of mass and age from genesis to lysis for individual features.
+- Extended functionality: Calculate anomalies from daily or monthly or seasonal... (long-term) climatology with moving average window: ``calc_anom(groupby=..., window=...)``
 
 
 ============
@@ -61,7 +63,19 @@ Ideally install it in a virtual environment.
 
     pip install contrack
     
-Make sure you have the required dependencies (see docs/environment.yml).   
+Make sure you have the required dependencies (for detail see docs/environment.yml):
+ - xarray
+ - scipy
+ - pandas
+ - numpy
+ - netCDF4
+ - (for plotting on geographical maps: matplotlib and cartopy)
+ 
+To install the development version (master), do:
+
+.. code:: bash
+
+    pip install git+https://github.com/steidani/ConTrack
 
 Copy from Github repository
 ---------------------------
@@ -73,7 +87,25 @@ Copy/clone locally the latest version from ConTrack:
     git clone git@github.com:steidani/ConTrack.git /path/to/local/contrack
     cd path/to/local/contrack
 
-To run the test suite, install `pytest <https://pytest.org>`__ and run ``pytest``.
+Prepare the conda environment:
+
+.. code-block:: bash
+
+    conda create -y -q -n contrack_dev python=3.8.5 pytest
+    conda env update -q -f docs/environment.yml -n contrack_dev
+
+Install contrack in development mode in contrack_dev:
+
+.. code-block:: bash
+
+    conda activate contrack_dev
+    pip install -e .
+
+Run the tests:
+
+.. code-block:: bash
+
+    python -m pytest
 
 ==========
 Tutorial
@@ -90,7 +122,7 @@ Example: Calculate blocking climatology
    # initiate blocking instance
    block = contrack()
    
-   # read ERA5 Z500 (geopotential at 500 hPa, daily with 1° spatial resolution)
+   # read ERA5 Z500 (geopotential at 500 hPa) daily global data from 19810101_00 to 20101231_00 with 1° spatial resolution)
    # downloaded from https://cds.climate.copernicus.eu
    block.read('data/era5_1981-2010_z_500.nc')
 

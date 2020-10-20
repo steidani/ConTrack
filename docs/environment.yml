@@ -1,4 +1,4 @@
-name: contrack-docs
+name: contrack_dev
 channels:
   - conda-forge
 dependencies:
