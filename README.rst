@@ -140,6 +140,9 @@ Example: Calculate blocking climatology
    block
    # Out[]:	Xarray dataset with 2707 time steps. 
    #	     	Available fields: z, z_height, anom, flag
+   
+   # save flag
+   block['flag'].to_netcdf('data/flag.nc')
 
    # plotting blocking frequency (in %) for winter over Northern Hemisphere
    import matplotlib.pyplot as plt
