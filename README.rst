@@ -138,7 +138,7 @@ Example: Calculate blocking climatology
 		      twosided=True)
    # output: variable 'flag'. Each blocking system is identified by a unique flag/ID.
    block
-   # Out[]:	Xarray dataset with 10957 time steps. 
+   # Out[]:	Xarray dataset with 2707 time steps. 
    #	     	Available fields: z, z_height, anom, flag
 
    # plotting blocking frequency (in %) for winter over Northern Hemisphere
