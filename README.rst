@@ -44,7 +44,7 @@ Ideally install it in a virtual environment.
 
     pip install contrack
     
-Make sure you have the required dependencies (for detail see docs/environment.yml):
+Make sure you have the required dependencies (for details see docs/environment.yml):
 
 - xarray
 - scipy
@@ -52,6 +52,7 @@ Make sure you have the required dependencies (for detail see docs/environment.ym
 - numpy
 - netCDF4
 - (for plotting on geographical maps: matplotlib and cartopy)
+- (for parallel computing: dask)
  
 To install the development version (master), do:
 
@@ -107,6 +108,9 @@ Example: Calculate blocking climatology
    # read ERA5 Z500 (geopotential at 500 hPa) daily global data from 19810101_00 to 20101231_00 with 1° spatial resolution)
    # downloaded from https://cds.climate.copernicus.eu
    block.read('data/era5_1981-2010_z_500.nc')
+   block
+   # Out[]:	Xarray dataset with 10957 time steps. 
+   #	     	Available fields: z
 
    # select only winter months January, February and December
    block.ds = block.ds.sel(time=block.ds.time.dt.month.isin([1, 2, 12]))
@@ -133,6 +137,9 @@ Example: Calculate blocking climatology
 		      persistence=5,
 		      twosided=True)
    # output: variable 'flag'. Each blocking system is identified by a unique flag/ID.
+   block
+   # Out[]:	Xarray dataset with 10957 time steps. 
+   #	     	Available fields: z, z_height, anom, flag
 
    # plotting blocking frequency (in %) for winter over Northern Hemisphere
    import matplotlib.pyplot as plt

@@ -12,7 +12,7 @@ setup(
     description="Contour Tracking of circulation anomalies in Weather and Climate Data.",
     long_description=readme,
     long_description_content_type="text/x-rst",
-    author="steidani",
+    author="Daniel Steinfeld",
     author_email="daniel.steinfeld@alumni.ethz.ch",
     url="https://github.com/steidani/ConTrack",
     packages=find_packages(exclude=("tests", "tests.*", "docs", "docs.*", "examples", "examples.*" )),
