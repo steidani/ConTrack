@@ -122,7 +122,7 @@ Example: Calculate blocking climatology
                                gph_name='z_height')
    
    # calculate Z500 anomaly (emporally smoothed with a 2 d running mean) with respect to the 31-day running mean (long-term) climatology
-   block.calc_anom('z_height', 
+   block.calc_anom(variable='z_height', 
                    smooth=2,
                    window=31,
                    groupby='dayofyear')
@@ -131,12 +131,12 @@ Example: Calculate blocking climatology
 
    # Finally, track blocking anticyclones (>=150gmp, 50% overlap twosided, 5 days persistence)
    block.run_contrack(variable='anom',
-   		      threshold=150,
+   		      threshold=160,
 		      gorl='>=',
 		      overlap=0.5,
 		      persistence=5,
 		      twosided=True)
-   # output: variable 'flag'. Each blocking system is identified by a unique flag/ID.
+   # output: variable 'flag'. 437 blocking systems tracked. Each blocking system is identified by a unique flag/ID.
    block
    # Out[]:	Xarray dataset with 2707 time steps. 
    #	     	Available fields: z, z_height, anom, flag
