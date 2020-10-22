@@ -121,7 +121,7 @@ Example: Calculate blocking climatology
                                gp_unit='m**2 s**-2',
                                gph_name='z_height')
    
-   # calculate Z500 anomaly (emporally smoothed with a 2 d running mean) with respect to the 31-day running mean (long-term) climatology
+   # calculate Z500 anomaly (temporally smoothed with a 2 d running mean) with respect to the 31-day running mean (long-term: 30 years) climatology
    block.calc_anom(variable='z_height', 
                    smooth=2,
                    window=31,
@@ -141,7 +141,7 @@ Example: Calculate blocking climatology
    # Out[]:	Xarray dataset with 2707 time steps. 
    #	     	Available fields: z, z_height, anom, flag
    
-   # save flag
+   # save to disk
    block['flag'].to_netcdf('data/flag.nc')
 
    # plotting blocking frequency (in %) for winter over Northern Hemisphere
@@ -183,7 +183,7 @@ Using the output 'flag' from block.run_contrack() to calculate blocking intensit
 	3835  6948  20101224_00          3       -57     214.02  5141693.22
 	3836  6948  20101225_00          5       -55     211.33  7606108.76
 
-   # save result
+   # save result to disk
    block_df.to_csv('data/block.csv', index=False)
    
    # plotting blocking track (center of mass) and genesis 
