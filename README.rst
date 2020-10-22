@@ -128,7 +128,7 @@ Example: Calculate blocking climatology
                    smooth=2,
                    window=31,
                    groupby='dayofyear')
-   # you can use 'clim=...' to point towards an existing climatological mean (useful for weather forecasts)
+   # Hint: Use 'clim=...' to point towards an existing climatological mean (useful for weather forecasts)
    # output: variable 'anom'.
 
    # Finally, track blocking anticyclones (>=150gmp, 50% overlap twosided, 5 days persistence)
