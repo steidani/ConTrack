@@ -163,8 +163,8 @@ Example: Calculate blocking climatology
    :width: 20 px
    :align: center
 
-Example: Calculation of blocking characteristics 
-------------------------------------------------
+Example: Calculation of blocking characteristics for life cycle analysis 
+------------------------------------------------------------------------
 
 Using the output 'flag' from block.run_contrack() to calculate blocking intensity, size, center of mass, age from genesis to lysis for each tracked feature.
 
