@@ -136,10 +136,13 @@ Example: Calculate blocking climatology
 		      overlap=0.5,
 		      persistence=5,
 		      twosided=True)
-   # output: variable 'flag'. 437 blocking systems tracked. Each blocking system is identified by a unique flag/ID.
+   # output: variable 'flag'. 440 blocking systems tracked. Each blocking system is identified by a unique flag/ID.
    block
    # Out[]:	Xarray dataset with 2707 time steps. 
    #	     	Available fields: z, z_height, anom, flag
+   
+   # Hint: In case you want to use a more objective threshold, e.g., the 90th percentile of the Z500 anomaly winter distribution over 50°-80°N, do: 
+   # threhold = block['anom'].sel(latitude=slice(80, 50)).quantile([0.90], dim='time').mean() # 177gmp
    
    # save to disk
    block['flag'].to_netcdf('data/flag.nc')
