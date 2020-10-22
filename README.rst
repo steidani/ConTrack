@@ -142,7 +142,7 @@ Example: Calculate blocking climatology
    #	     	Available fields: z, z_height, anom, flag
    
    # Hint: In case you want to use a more objective threshold, e.g., the 90th percentile of the Z500 anomaly winter distribution over 50°-80°N, do: 
-   # threhold = block['anom'].sel(latitude=slice(80, 50)).quantile([0.90], dim='time').mean() # 177gmp
+   # threshold = block['anom'].sel(latitude=slice(80, 50)).quantile([0.90], dim='time').mean() # 177gmp
    
    # save to disk
    block['flag'].to_netcdf('data/flag.nc')
