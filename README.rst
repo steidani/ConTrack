@@ -121,12 +121,14 @@ Example: Calculate blocking climatology
                                gp_unit='m**2 s**-2',
                                gph_name='z_height')
    
+   # Hint: Use block.set_up(...) to do consistency check and set (automatically or manually) names of dimension ('time', 'latitude', 'longitude')
+   
    # calculate Z500 anomaly (temporally smoothed with a 2 d running mean) with respect to the 31-day running mean (long-term: 30 years) climatology
    block.calc_anom(variable='z_height', 
                    smooth=2,
                    window=31,
                    groupby='dayofyear')
-   # you can use 'clim=...' to point towards an existing climatological mean
+   # you can use 'clim=...' to point towards an existing climatological mean (useful for weather forecasts)
    # output: variable 'anom'.
 
    # Finally, track blocking anticyclones (>=150gmp, 50% overlap twosided, 5 days persistence)
