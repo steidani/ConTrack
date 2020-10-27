@@ -600,7 +600,7 @@ class contrack(object):
                 threshold value to detect contours.
             gorl : string
                 find contours that are greater or lower than threshold value [>, >=, <, >=, ge,le,gt,lt].
-            overlap : int
+            overlap : float
                 overlapping fraction of two contours between two time steps [0-1].
             persistence : int
                 temporal persistence (in time steps) of the contour life time
@@ -670,7 +670,7 @@ class contrack(object):
                                                                           [[0, 0, 0], [0,0,0], [0,0,0]]])
                                           ) # comment: can lead to memory error... better to loop over each time step?  
             
-        # periodic boundry: allow contours to cross date border
+        # periodic boundary: allow contours to cross date border
         # comment: what if dimension index not in order (time,lat,lon)? --> self.ds[variable].dims.index(self._latitude_name)
         for tt in range(len(self.ds[self._time_name])):
             for yy in range(len(self.ds[self._latitude_name])):
@@ -725,7 +725,7 @@ class contrack(object):
                     if (fraction_forward < overlap):
                         flag[tt][slice_][(flag[tt][slice_] == label)] = 0.
                         
-        # step 4: persistency
+        # step 4: persistence
         # find features along time axis
         logger.info("Apply persistence...")
         flag = xr.where(flag >= 1, 1, 0)
@@ -733,7 +733,7 @@ class contrack(object):
                                                                       [[1, 1, 1], [1,1,1], [1,1,1]],
                                                                       [[0, 0, 0], [0,1,0], [0,0,0]]])
                                            ) # comment: can lead to memory error...
-        # periodic boundry: allow features to cross date border
+        # periodic boundary: allow features to cross date border
         slices = ndimage.find_objects(flag)
         for tt in range(len(self.ds[self._time_name])):
             for yy in range(len(self.ds[self._latitude_name])):
@@ -745,7 +745,7 @@ class contrack(object):
                     # upstream
                     slice_ = slices[flag[tt, yy, 0]-1]
                     flag[slice_][(flag[slice_] == flag[tt, yy, -1])] = flag[tt, yy, 0]
-        # check for persistance, remove features with lifetime < persistance
+        # check for persistence, remove features with lifetime < persistence
         label = 0
         for slice_ in ndimage.find_objects(flag):
             label = label+1
