@@ -36,7 +36,7 @@ Referencing
 ============
 
 | Please cite ConTrack in your publication: *Steinfeld, D., 2020: ConTrack - Contour Tracking. GitHub, https://github.com/steidani/ConTrack*.   
-| Please also cite: *Schwierz, C., Croci-Maspoli, M., and Davies, H. C., 2004: Perspicacious indicators of atmospheric blocking, Geophys. Res. Lett., 31, 0094–8276, https://doi.org/10.1029/2003GL019341*.
+| In case you are using the blocking index, please also cite: *Schwierz, C., Croci-Maspoli, M., and Davies, H. C., 2004: Perspicacious indicators of atmospheric blocking, Geophys. Res. Lett., 31, 0094–8276, https://doi.org/10.1029/2003GL019341*.
 
 ============
 Installation
