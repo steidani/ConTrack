@@ -16,7 +16,7 @@ ConTrack is based on the atmospheric blocking index by `Schwierz et al. (2004) <
 
 See also:  
 
-- `Scherrer et al. (2005) <https://doi.org/10.1002/joc.1250>`_: 
+- `Scherrer et al. (2005) <https://doi.org/10.1002/joc.1250>`_
 - `Croci-Maspoli et al. (2007) <https://doi.org/10.1175/JCLI4029.1>`_
 - `Pfahl et al. (2015) <https://www.nature.com/articles/ngeo2487>`_
 - `Woollings et al. (2018) <https://link.springer.com/article/10.1007/s40641-018-0108-z#appendices>`_
@@ -75,7 +75,7 @@ Copy/clone locally the latest version from ConTrack:
 .. code-block:: bash
 
     git clone git@github.com:steidani/ConTrack.git /path/to/local/contrack
-    cd path/to/local/contrack
+    cd /path/to/local/contrack
 
 Prepare the conda environment:
 

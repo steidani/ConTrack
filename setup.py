@@ -20,10 +20,10 @@ setup(
     install_requires=open("requirements.txt").read().split(),
     classifiers=[
         "Programming Language :: Python :: 3",
-	"License :: OSI Approved :: MIT License",
+        "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
-	"Intended Audience :: Science/Research",
-	"Topic :: Scientific/Engineering :: Atmospheric Science",
+        "Intended Audience :: Science/Research",
+        "Topic :: Scientific/Engineering :: Atmospheric Science",
     ],
     keywords=["data", "science", "meteorology", "climate", "atmospheric blocking", "troughs and ridges"]
 )
