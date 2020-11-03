@@ -483,8 +483,8 @@ class contrack(object):
         clim = self[variable].groupby(self._time_name + '.' + groupby).mean(self._time_name)
         #clim = clim.chunk({'dayofyear': None})
         
-        # step 2: running mean ( with periodic boundary)
-        clim = clim.rolling(dayofyear=window, center=True).mean().fillna(
+        # step 2: running mean (with periodic boundary)
+        clim = clim.rolling(**{groupby:window}, center=True).mean().fillna(
             clim[-window:].mean(dim=groupby)    
         )
         
