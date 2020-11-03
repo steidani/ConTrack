@@ -561,7 +561,7 @@ class contrack(object):
             if groupby not in clim_mean.dims:
                 clim_mean = clim_mean.groupby(self._time_name + '.' + groupby)
             
-            # regrid        - grid dimensions in clim must have same name as in input variable
+            # regrid - grid dimensions in clim must have same name as in input variable
             clim_mean = clim_mean.reindex(**{self._latitude_name:self.ds[self._latitude_name], self._longitude_name:self.ds[self._longitude_name]}, method='nearest')
                
         # step 2: calculate and create new variable anomaly     
