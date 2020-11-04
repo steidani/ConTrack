@@ -77,6 +77,8 @@ def test_set_up_automatic(contracks):
 def test_calc_clim(contracks):
     contracks.set_up()  
     assert type(contracks.calc_clim('anom')) is xr.DataArray
+    assert type(contracks.calc_clim('anom',groupby='month')) is xr.DataArray
+    assert contracks.calc_clim('anom',groupby='month').dims == ('month', 'latitude', 'longitude')
 
 def test_run_caltrack(contracks):
     contracks.run_contrack(variable='anom', 
