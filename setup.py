@@ -8,13 +8,16 @@ with open("README.rst", "r") as f:
 
 setup(
     name="ConTrack",
-    version="0.2.1",
+    version="0.3.1",
     description="Contour Tracking of circulation anomalies in Weather and Climate Data.",
     long_description=readme,
     long_description_content_type="text/x-rst",
     author="Daniel Steinfeld",
     author_email="daniel.steinfeld@alumni.ethz.ch",
     url="https://github.com/steidani/ConTrack",
+    project_urls={
+        "Bug Tracker": "https://github.com/steidani/ConTrack/issues",
+    },
     packages=find_packages(exclude=("tests", "tests.*", "docs", "docs.*", "examples", "examples.*" )),
     python_requires=">=3.6",
     install_requires=open("requirements.txt").read().split(),

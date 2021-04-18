@@ -241,6 +241,11 @@ Using the output 'flag' from block.run_contrack() to calculate blocking intensit
 What's New
 ==========
 
+v0.3.0 (18.04.2021): 
+--------------------
+
+- bugfix: see Issue calc_clim error.
+
 v0.2.0 (19.10.2020): 
 --------------------
 
