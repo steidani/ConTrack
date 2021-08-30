@@ -596,7 +596,7 @@ class contrack(object):
         ----------
             variable : string
                 input variable.
-            threshold : int or xarray DataArray
+            threshold : int or xarray DataArray with coordinates "dayofyear"
                 threshold value to detect contours.
             gorl : string
                 find contours that are greater or lower than threshold value [>, >=, <, >=, ge,le,gt,lt].
@@ -660,7 +660,7 @@ class contrack(object):
             # remove coordinates from threshold
             flag = flag.reset_coords(['quantile', 'dayofyear'], drop=True)
 
-        else: 
+        else: # threshold is numeric
             if gorl == '>=' or gorl == 'ge':
                 flag = xr.where(self.ds[variable] >= threshold, 1, 0)
             elif gorl == '<=' or gorl == 'le':
