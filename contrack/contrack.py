@@ -743,7 +743,7 @@ class contrack(object):
                     flag[slice_][(flag[slice_] == flag[tt, yy, 0])] = flag[tt, yy, -1]
                 if flag[tt, yy, 0] > 0 and flag[tt, yy, -1] > 0 and (flag[tt, yy, 0] < flag[tt, yy, -1]):
                     # upstream
-                    slice_ = slices[flag[tt, yy, 0]-1]
+                    slice_ = slices[flag[tt, yy, -1]-1]
                     flag[slice_][(flag[slice_] == flag[tt, yy, -1])] = flag[tt, yy, 0]
         # check for persistance, remove features with lifetime < persistance
         label = 0
