@@ -241,6 +241,12 @@ Using the output 'flag' from block.run_contrack() to calculate blocking intensit
 What's New
 ==========
 
+v0.4.1 (18.04.2021): 
+--------------------
+
+- bugfix: how flag ID is tracked at periodic boundary.
+- run_contrack(threshold): Threshold can now also be a xr.DataArray (1D) with time = 'dayofyear' to allow for variable threshold.
+
 v0.3.0 (18.04.2021): 
 --------------------
 
