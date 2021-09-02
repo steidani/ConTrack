@@ -596,7 +596,7 @@ class contrack(object):
         ----------
             variable : string
                 input variable.
-            threshold : int
+            threshold : numeric or xarray DataArray (1-dimensional) with time coordinate "dayofyear"
                 threshold value to detect contours.
             gorl : string
                 find contours that are greater or lower than threshold value [>, >=, <, >=, ge,le,gt,lt].
@@ -645,17 +645,33 @@ class contrack(object):
         
         # step 1: define closed contours (greater or less than threshold)
         logger.info("Find individual contours...")
-        if gorl == '>=' or gorl == 'ge':
-            flag = xr.where(self.ds[variable] >= threshold, 1, 0)
-        elif gorl == '<=' or gorl == 'le':
-            flag = xr.where(self.ds[variable] <= threshold, 1, 0)
-        elif gorl == '>' or gorl == 'gt':
-            flag = xr.where(self.ds[variable] > threshold, 1, 0)
-        elif gorl == '<' or gorl == 'lt':
-            flag = xr.where(self.ds[variable] < threshold, 1, 0)
-        else:
-            errmsg = ' Please select from [>, >=, <, >=] for gorl'
-            raise ValueError(errmsg)
+        if isinstance(threshold, xr.DataArray):
+            if gorl == '>=' or gorl == 'ge':
+                flag = xr.where(self.ds[variable].groupby(self._time_name + '.dayofyear') >= threshold, 1, 0)
+            elif gorl == '<=' or gorl == 'le':
+                flag = xr.where(self.ds[variable].groupby(self._time_name + '.dayofyear') <= threshold, 1, 0)
+            elif gorl == '>' or gorl == 'gt':
+                flag = xr.where(self.ds[variable].groupby(self._time_name + '.dayofyear') > threshold, 1, 0)
+            elif gorl == '<' or gorl == 'lt':
+                flag = xr.where(self.ds[variable].groupby(self._time_name + '.dayofyear') < threshold, 1, 0)
+            else:
+                errmsg = ' Please select from [>, >=, <, >=] for gorl'
+                raise ValueError(errmsg)
+            # remove coordinates from threshold
+            flag = flag.reset_coords(['dayofyear'], drop=True)
+
+        else: # threshold is numeric
+            if gorl == '>=' or gorl == 'ge':
+                flag = xr.where(self.ds[variable] >= threshold, 1, 0)
+            elif gorl == '<=' or gorl == 'le':
+                flag = xr.where(self.ds[variable] <= threshold, 1, 0)
+            elif gorl == '>' or gorl == 'gt':
+                flag = xr.where(self.ds[variable] > threshold, 1, 0)
+            elif gorl == '<' or gorl == 'lt':
+                flag = xr.where(self.ds[variable] < threshold, 1, 0)
+            else:
+                errmsg = ' Please select from [>, >=, <, >=] for gorl'
+                raise ValueError(errmsg)
         
         # set order of dimension to (time,lat,lon)      
         dims = self.ds[variable].dims
