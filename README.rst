@@ -1,5 +1,5 @@
 .. image:: docs/logo_contrack.png
-   :width: 30 px
+   :width: 100 px
    :align: center
 
 
@@ -169,7 +169,7 @@ Example: Calculate blocking climatology
    plt.show()
 
 .. image:: docs/era5_blockingfreq_DJF.png
-   :width: 20 px
+   :width: 100 px
    :align: center
 
 Example: Calculation of blocking characteristics for life cycle analysis 
@@ -234,7 +234,7 @@ Using the output 'flag' from block.run_contrack() to calculate blocking intensit
 
 
 .. image:: docs/cesm_blocking_track.png
-   :width: 20 px
+   :width: 100 px
    :align: center
 
 ==========
