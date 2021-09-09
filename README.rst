@@ -1,5 +1,5 @@
 .. image:: docs/logo_contrack.png
-   :width: 100 px
+   :width: 100%
    :align: center
 
 
