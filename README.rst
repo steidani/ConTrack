@@ -47,11 +47,11 @@ Installation
 Using pip
 ---------
 
-Ideally install it in a virtual environment.
+Ideally install it in a virtual environment (development version, master).
 
 .. code:: bash
 
-    pip install contrack
+    pip install git+https://github.com/steidani/ConTrack
     
 Make sure you have the required dependencies (for details see docs/environment.yml):
 
@@ -63,11 +63,6 @@ Make sure you have the required dependencies (for details see docs/environment.y
 - (for plotting on geographical maps: matplotlib and cartopy)
 - (for parallel computing: dask)
  
-To install the development version (master), do:
-
-.. code:: bash
-
-    pip install git+https://github.com/steidani/ConTrack
 
 Copy from Github repository
 ---------------------------
