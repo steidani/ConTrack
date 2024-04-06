@@ -99,7 +99,7 @@ Tutorial
 ==========
 
 Example: Calculate Z500 blocking climatology 
----------------------------------------
+--------------------------------------------
 
 .. code-block:: 
    
