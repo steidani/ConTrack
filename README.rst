@@ -36,7 +36,7 @@ Referencing
 ============
 
 | Please cite **ConTrack** in your publication: *Steinfeld, D., 2020: ConTrack - Contour Tracking. GitHub, https://github.com/steidani/ConTrack*.   
-| In case you are using the blocking index, please also cite: *Schwierz, C., Croci-Maspoli, M., and Davies, H. C., 2004: Perspicacious indicators of atmospheric blocking, Geophys. Res. Lett., 31, 0094–8276, https://doi.org/10.1029/2003GL019341*.   
+| In case you are using the PV blocking index, please also cite: *Schwierz, C., Croci-Maspoli, M., and Davies, H. C., 2004: Perspicacious indicators of atmospheric blocking, Geophys. Res. Lett., 31, 0094–8276, https://doi.org/10.1029/2003GL019341*.   
 |
 | Be aware that this is a free scientific tool in continous development, then it may not be free of bugs. Please report any issue on the GitHub portal.
 
@@ -49,7 +49,7 @@ Using pip
 
 Ideally install it in a virtual environment (development version, master).
 
-.. code:: bash
+.. code-block::
 
     pip install git+https://github.com/steidani/ConTrack
     
@@ -69,28 +69,28 @@ Copy from Github repository
 
 Copy/clone locally the latest version from ConTrack:
 
-.. code-block:: bash
+.. code-block::
 
     git clone git@github.com:steidani/ConTrack.git /path/to/local/contrack
     cd path/to/local/contrack
 
 Prepare the conda environment:
 
-.. code-block:: bash
+.. code-block::
 
     conda create -y -q -n contrack_dev python=3.8.5 pytest
     conda env update -q -f docs/environment.yml -n contrack_dev
 
 Install contrack in development mode in contrack_dev:
 
-.. code-block:: bash
+.. code-block::
 
     conda activate contrack_dev
     pip install -e .
 
 Run the tests:
 
-.. code-block:: bash
+.. code-block::
 
     python -m pytest
 
@@ -98,10 +98,10 @@ Run the tests:
 Tutorial
 ==========
 
-Example: Calculate blocking climatology 
+Example: Calculate Z500 blocking climatology 
 ---------------------------------------
 
-.. code-block:: python 
+.. code-block:: 
    
    # import contrack module 
    from contrack import contrack
@@ -172,7 +172,7 @@ Example: Calculation of blocking characteristics for life cycle analysis
 
 Using the output 'flag' from block.run_contrack() to calculate blocking intensity, size, center of mass, age from genesis to lysis for each tracked feature.
 
-.. code-block:: python 
+.. code-block:: 
 
    # flag = output of block.run_contrack(), variable = input variable to calculate intensity and center of mass
    block_df = block.run_lifecycle(flag='flag', variable='anom')
