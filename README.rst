@@ -232,7 +232,7 @@ Using the output 'flag' from block.run_contrack() to calculate blocking intensit
    :width: 60%
    :align: center
 
-Blocking Detection Example with VAPV (ERA5 3-hourly data)
+Blocking Detection Example with vertically-averaged Potential Vorticity (ERA5 3-hourly data)
 ---------------------------------------------------------
 
 I often receive questions about parameter selection for blocking detection. Here's an example description using potential vorticity from 3-hourly ERA5 data:   
