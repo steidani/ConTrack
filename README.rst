@@ -232,6 +232,13 @@ Using the output 'flag' from block.run_contrack() to calculate blocking intensit
    :width: 60%
    :align: center
 
+Blocking Detection Example with VAPV (ERA5 3-hourly data)
+---------------------------------------------------------
+
+I often receive questions about parameter selection for blocking detection. Here's an example description using potential vorticity from 3-hourly ERA5 data:   
+*"We identify blocks as persistent negative potential vorticity (PV) anomalies with the blocking detection method implemented by Steinfeld 2020 (https://github.com/steidani/ConTrack) and adapted from the original index by Schwierz et al. (2004). PV anomalies are calculated as deviations from a climatological 30-day running mean of the analyzed baseline period (1979–2020) and temporally smoothed with a 2-day running mean filter to remove higher-frequency components. The PV fields are vertically averaged between 500-150\,hPa. For each time step, we detect atmospheric blocking as 2-D areas below a variable PV intensity threshold defined as the 10$^{th}$ percentile of the PV anomaly distribution over 30$^{\circ}$-90$^{\circ}$N at each calendar day, which allows for seasonality in the intensity of blocks. To ensure quasi-stationarity and persistence, we applied an 85\,\% two-sided spatial overlap criterion between the closed contours of successive 3-hourly time steps for at least 5 days."*
+
+
 ==========
 What's New
 ==========
